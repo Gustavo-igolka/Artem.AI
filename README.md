@@ -1,70 +1,70 @@
 # ARTEM.AI V5 TRAVELER
 
-**Цифровой компаньон с гибридным интеллектом**  
-Создан в RKC studio (Rat, Karas and Crab).
+**Digital companion with hybrid intelligence**  
+Created at RKC studio (Rat, Karas and Crab).
 
-ARTEM.AI — это экспериментальный AI-ассистент, работающий прямо в браузере. Он сочетает лёгкую локальную нейросеть на триграммах с возможностью подключения мощных облачных моделей через API (Groq, Gemini). Все данные хранятся локально в `localStorage` и полностью контролируются пользователем.
+ARTEM.AI — an experimental AI assistant running directly in your browser. It combines lightweight local neural networks with powerful cloud APIs for a truly hybrid experience.
 
 ![ARTEM.AI V5 TRAVELER](screenshot.png)  
-*— если есть скриншот, добавьте ссылку на изображение*
+*— add screenshot link here if available*
 
-## Особенности
+## Features
 
-- **Гибридный режим**: локальная генерация (триграммы) или вызов API (Groq Llama 3.3 / Gemini 2.5 Flash).
-- **Обучение на лету**: любые сообщения (кроме вопросов) автоматически пополняют базу триграмм.
-- **Режим раздумий**: перед ответом показывает этапы мышления — полное погружение.
-- **Эволюционный лог**: записывает все события обучения, импорта и изменений.
-- **Импорт из Artem.S**: совместимость с предыдущими версиями данных.
-- **Экспорт/импорт личности**: сохраняйте и переносите обученную модель.
-- **Шифрование API-ключей**: ключи хранятся в зашифрованном виде в `localStorage`.
-- **Тёмная тема и звёздное небо**: атмосферный интерфейс в стиле киберпанк.
+- **Hybrid Mode**: local generation (trigrams) or API calls (Groq Llama 3.3 / Gemini 2.5 Flash).
+- **On-the-fly Learning**: any messages (except questions) automatically expand the trigram database.
+- **Reasoning Mode**: displays thinking steps before responding — full immersion.
+- **Evolution Log**: records all learning events, imports, and changes.
+- **Import from Artem.S**: backward compatibility with previous versions.
+- **Export/Import Personality**: save and transfer your trained model.
+- **API Key Encryption**: keys are stored encrypted in `localStorage`.
+- **Dark Theme with Starry Sky**: atmospheric cyberpunk-style interface.
 
-## Как использовать
+## How to Use
 
-1. **Откройте `index.html`** в любом современном браузере (Chrome, Firefox, Edge, Safari).
-2. Начните печатать в поле ввода.  
-   - Если сообщение заканчивается на `?` — Артём ответит, но не запомнит.  
-   - Если без `?` — ответит и запомнит новые триграммы.
-3. **Настройка API** (по желанию):
-   - Перейдите на вкладку **Settings**.
-   - Включите **Hybrid Mode (API)**.
-   - Выберите провайдера (Groq или Gemini).
-   - Вставьте ваш API-ключ (он будет зашифрован).
-   - При желании отредактируйте **System Prompt**.
-4. **Обучение вручную**:
-   - Вкладка **Training** — вставьте любой текст (статьи, диалоги, книги) и нажмите **Train Artem**.
-5. **Импорт из Artem.S**:
-   - Нажмите **Import Artem.S** на боковой панели, если у вас есть сохранённые данные предыдущих версий.
-6. **Сохранение личности**:
-   - Кнопки **Save Personality** / **Load Personality** позволяют экспортировать и восстанавливать всю память и настройки.
+1. **Open `index.html`** in any modern browser (Chrome, Firefox, Edge, Safari).
+2. Start typing in the input field.  
+   - If the message ends with `?` — Artem will answer but won't learn.  
+   - If without `?` — Artem will answer and learn new trigrams.
+3. **API Configuration** (optional):
+   - Go to the **Settings** tab.
+   - Enable **Hybrid Mode (API)**.
+   - Choose a provider (Groq or Gemini).
+   - Paste your API key (it will be encrypted).
+   - Optionally edit the **System Prompt**.
+4. **Manual Training**:
+   - **Training** tab — paste any text (articles, dialogues, books) and click **Train Artem**.
+5. **Import from Artem.S**:
+   - Click **Import Artem.S** on the sidebar if you have saved data from previous versions.
+6. **Save Your Personality**:
+   - **Save Personality** / **Load Personality** buttons let you export and restore all memory and settings.
 
-## Технологии
+## Technologies
 
-- HTML5 / CSS3 (TailwindCSS для быстрой стилизации)
-- Чистый JavaScript (ES6) без фреймворков
-- Хранилище: `localStorage`
-- API: Groq Cloud, Google Gemini
-- Шрифты: Orbitron, IBM Plex Mono
+- HTML5 / CSS3 (TailwindCSS for rapid styling)
+- Vanilla JavaScript (ES6) without frameworks
+- Storage: `localStorage`
+- APIs: Groq Cloud, Google Gemini
+- Fonts: Orbitron, IBM Plex Mono
 
-## Совместимость
+## Compatibility
 
-Работает во всех современных браузерах с поддержкой `localStorage` и `fetch`. Для работы с API требуется активное интернет-соединение.
+Works in all modern browsers with `localStorage` and `fetch` support. API functionality requires an active internet connection.
 
-## Авторы и права
+## Authors & License
 
-**Разработчик:** RKC studio (Rat, Karas and Crab)  
-**Год:** 2026  
-**Лицензия:** MIT (см. файл [LICENSE](LICENSE))
+**Developer:** RKC studio (Rat, Karas and Crab)  
+**Year:** 2026  
+**License:** MIT (see [LICENSE](LICENSE) file)
 
-Проект создан с целью исследования гибридных интерфейсов и локального обучения.  
-Вы можете свободно использовать, модифицировать и распространять код с указанием авторства.
+This project was created to explore hybrid interfaces and local learning approaches.  
+You are free to use, modify, and distribute the code with proper attribution.
 
-## Благодарности
+## Acknowledgments
 
-- Groq за быстрые инференсы Llama.
-- Google за Gemini API.
-- Сообществу за вдохновение.
+- Groq for fast Llama inference.
+- Google for Gemini API.
+- The community for inspiration.
 
 ---
 
-*ARTEM.AI V5 TRAVELER — ваш спутник в цифровом пространстве.*
+*ARTEM.AI V5 TRAVELER — your companion in the digital realm.*
