@@ -1,0 +1,1974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARTEM.AI — V5 TRAVELER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=IBM+Plex+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    /* (стили без изменений, оставлены как в оригинале) */
+    :root {
+      --bg:       #05050f;
+      --surface:  #0a0a1a;
+      --panel:    #0e0e22;
+      --border:   rgba(0, 229, 255, 0.12);
+      --accent:   #00e5ff;
+      --accent2:  #ff6b35;
+      --green:    #00ff9f;
+      --red:      #ff4060;
+      --yellow:   #ffce00;
+      --text:     #cce8f0;
+      --muted:    #3a5060;
+      --font-display: 'Orbitron', monospace;
+      --font-mono:    'IBM Plex Mono', monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      height: 100vh;
+      overflow: hidden;
+      margin: 0;
+    }
+
+    /* STARFIELD */
+    #starfield {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    /* LAYOUT */
+    .app {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      height: 100vh;
+      width: 100%;
+    }
+
+    /* SIDEBAR */
+    aside {
+      width: 240px;
+      flex-shrink: 0;
+      background: rgba(10, 10, 26, 0.95);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 14px;
+      backdrop-filter: blur(20px);
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      text-transform: uppercase;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+    .logo span { color: #ffffff; }
+    .version-badge {
+      display: inline-block;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(0,229,255,0.05));
+      border: 1px solid rgba(0,229,255,0.3);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+
+    /* NAV */
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      text-align: left;
+      width: 100%;
+      background: transparent;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .nav-btn.active {
+      color: var(--accent);
+      background: rgba(0,229,255,0.08);
+      border-color: rgba(0,229,255,0.2);
+    }
+    .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+
+    /* STATS */
+    .stats {
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      font-size: 10px;
+    }
+    .stat-label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    .stat-value { color: var(--text); font-weight: 500; }
+    .stat-value.online { color: var(--green); }
+    .stat-value.warning { color: var(--yellow); }
+    .stat-value.offline { color: var(--muted); }
+
+    /* MODE INDICATOR */
+    .mode-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 8px;
+      border: 1px solid;
+    }
+    .mode-pill.local { color: var(--green); border-color: rgba(0,255,159,0.25); background: rgba(0,255,159,0.06); }
+    .mode-pill.api   { color: var(--accent); border-color: rgba(0,229,255,0.25); background: rgba(0,229,255,0.06); }
+    .pulse { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ACTIONS */
+    .action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 8px;
+      border-radius: 7px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid;
+      background: transparent;
+    }
+    .action-btn.amber  { color: #ffce00; border-color: rgba(255,206,0,0.2); }
+    .action-btn.amber:hover  { background: rgba(255,206,0,0.08); }
+    .action-btn.green  { color: var(--green); border-color: rgba(0,255,159,0.2); }
+    .action-btn.green:hover  { background: rgba(0,255,159,0.08); }
+    .action-btn.blue   { color: var(--accent); border-color: rgba(0,229,255,0.2); }
+    .action-btn.blue:hover   { background: rgba(0,229,255,0.08); }
+    .action-btn.red    { color: var(--red); border-color: rgba(255,64,96,0.2); }
+    .action-btn.red:hover    { background: rgba(255,64,96,0.08); }
+
+    /* MAIN CONTENT */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: rgba(5, 5, 15, 0.6);
+    }
+
+    /* TABS CONTENT */
+    .tab-content { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .tab-content.active { display: flex; }
+
+    /* CHAT */
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+      scroll-behavior: smooth;
+    }
+
+    #chat::-webkit-scrollbar { width: 4px; }
+    #chat::-webkit-scrollbar-track { background: transparent; }
+    #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .msg-wrap { display: flex; margin-bottom: 20px; animation: fadeUp 0.3s ease-out; }
+    .msg-wrap.user { justify-content: flex-end; }
+    .msg-wrap.ai   { justify-content: flex-start; }
+    .msg-wrap.think { justify-content: flex-start; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .bubble {
+      max-width: 78%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.7;
+      font-family: var(--font-mono);
+    }
+    .bubble.user {
+      background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(0,229,255,0.08));
+      border: 1px solid rgba(0,229,255,0.25);
+      border-top-right-radius: 2px;
+      color: var(--text);
+    }
+    .bubble.ai {
+      background: rgba(14, 14, 34, 0.9);
+      border: 1px solid var(--border);
+      border-top-left-radius: 2px;
+      color: var(--text);
+    }
+    .bubble.think {
+      background: rgba(255,206,0,0.04);
+      border: 1px solid rgba(255,206,0,0.15);
+      border-top-left-radius: 2px;
+      color: rgba(255,206,0,0.7);
+      font-size: 11px;
+      padding: 8px 14px;
+      font-style: italic;
+    }
+    .bubble.system {
+      background: rgba(0,255,159,0.04);
+      border: 1px solid rgba(0,255,159,0.15);
+      color: rgba(0,255,159,0.6);
+      font-size: 11px;
+      padding: 8px 14px;
+      max-width: 100%;
+    }
+
+    /* TYPING CURSOR */
+    .typing::after {
+      content: '█';
+      display: inline;
+      color: var(--accent);
+      animation: blink 0.8s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* INPUT AREA */
+    .input-area {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      background: rgba(10, 10, 26, 0.8);
+      backdrop-filter: blur(10px);
+    }
+    .input-hint {
+      text-align: center;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+    .input-hint span { color: var(--accent); font-weight: 700; }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      background: rgba(14, 14, 34, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 6px 6px 16px;
+      transition: border-color 0.2s;
+    }
+    .input-row:focus-within { border-color: rgba(0,229,255,0.4); }
+    #msgInput {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 8px 0;
+    }
+    #msgInput::placeholder { color: var(--muted); }
+    #sendBtn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 7px;
+      padding: 8px 20px;
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #sendBtn:hover { background: #33ecff; transform: scale(1.03); }
+    #sendBtn:active { transform: scale(0.97); }
+
+    /* TRAINING TAB */
+    .tab-inner { padding: 24px 28px; display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+    .tab-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .tab-desc { font-size: 11px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+    textarea.train-area {
+      flex: 1;
+      background: rgba(14,14,34,0.8);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.7;
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea.train-area:focus { border-color: rgba(0,229,255,0.3); }
+    .btn-primary {
+      padding: 14px 28px;
+      background: linear-gradient(135deg, rgba(0,229,255,0.2), rgba(0,229,255,0.1));
+      border: 1px solid rgba(0,229,255,0.4);
+      color: var(--accent);
+      border-radius: 9px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover { background: rgba(0,229,255,0.2); box-shadow: 0 0 20px rgba(0,229,255,0.15); }
+    .btn-secondary {
+      padding: 14px 20px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--muted);
+      border-radius: 9px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+    #trainStatus { font-size: 11px; color: var(--green); text-align: center; margin-top: 10px; min-height: 20px; }
+
+    /* EVOLUTION LOG TAB */
+    .evo-log { flex: 1; overflow-y: auto; }
+    .evo-log::-webkit-scrollbar { width: 4px; }
+    .evo-log::-webkit-scrollbar-thumb { background: var(--border); }
+    .evo-entry {
+      display: flex;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      animation: fadeUp 0.3s ease-out;
+    }
+    .evo-icon { font-size: 16px; width: 24px; flex-shrink: 0; padding-top: 1px; }
+    .evo-time { font-size: 9px; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 3px; }
+    .evo-desc { font-size: 12px; color: var(--text); }
+    .evo-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .evo-empty { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 12px; }
+
+    /* SETTINGS TAB */
+    .settings-scroll { flex: 1; overflow-y: auto; }
+    .settings-scroll::-webkit-scrollbar { width: 4px; }
+    .settings-scroll::-webkit-scrollbar-thumb { background: var(--border); }
+    .setting-group {
+      background: rgba(14,14,34,0.6);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .setting-group-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+    .setting-label { font-size: 11px; color: var(--text); }
+    .setting-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    
+    /* TOGGLE */
+    .toggle-wrap { position: relative; display: inline-block; width: 40px; height: 22px; }
+    .toggle-wrap input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; cursor: pointer; inset: 0;
+      background: rgba(255,255,255,0.1);
+      border-radius: 22px; transition: 0.3s;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .toggle-slider:before {
+      content: ''; position: absolute;
+      height: 16px; width: 16px;
+      left: 2px; bottom: 2px;
+      background: var(--muted); border-radius: 50%;
+      transition: 0.3s;
+    }
+    input:checked + .toggle-slider { background: rgba(0,229,255,0.2); border-color: rgba(0,229,255,0.4); }
+    input:checked + .toggle-slider:before { transform: translateX(18px); background: var(--accent); }
+
+    /* SELECT/INPUT fields */
+    select.setting-select, input.setting-input {
+      background: rgba(14,14,34,0.9);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 7px 10px;
+      border-radius: 7px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    select.setting-select:focus, input.setting-input:focus { border-color: rgba(0,229,255,0.4); }
+    select.setting-select option { background: #0a0a1a; }
+    
+    input[type="range"] {
+      accent-color: var(--accent);
+      width: 120px;
+    }
+
+    textarea.setting-textarea {
+      width: 100%;
+      background: rgba(14,14,34,0.8);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 10px 12px;
+      border-radius: 7px;
+      outline: none;
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+    textarea.setting-textarea:focus { border-color: rgba(0,229,255,0.3); }
+
+    .save-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(0,229,255,0.08));
+      border: 1px solid rgba(0,229,255,0.3);
+      color: var(--accent);
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+    .save-btn:hover { background: rgba(0,229,255,0.2); }
+    .api-key-status { font-size: 10px; margin-top: 6px; }
+    .api-key-status.saved { color: var(--green); }
+    .api-key-status.empty { color: var(--muted); }
+
+    /* NOTIFICATION */
+    #notification {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(14,14,34,0.98);
+      border: 1px solid var(--border);
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 12px;
+      color: var(--text);
+      z-index: 1000;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      max-width: 300px;
+    }
+    #notification.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* ═══ ОБПАО STYLES ═══ */
+    .obpao-panel {
+      margin-top: 10px;
+      border: 1px solid rgba(0,229,255,0.15);
+      border-radius: 8px;
+      padding: 10px;
+      background: rgba(0,229,255,0.02);
+    }
+    .obpao-label {
+      font-size: 8px; font-weight: 700; letter-spacing: 0.2em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 7px;
+    }
+    .obpao-stat {
+      font-size: 9px; color: var(--muted); margin-bottom: 4px;
+      display: flex; justify-content: space-between;
+    }
+    .obpao-stat .v   { color: var(--text);   font-weight: 700; }
+    .obpao-stat .ok  { color: var(--green);  font-weight: 700; }
+    .obpao-stat .err { color: var(--red);    font-weight: 700; }
+    .obpao-stat .warn{ color: var(--yellow); font-weight: 700; }
+    .obpao-btn {
+      width: 100%; padding: 6px 8px; border-radius: 5px;
+      font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      cursor: pointer; transition: all 0.2s; border: 1px solid;
+      background: transparent; margin-top: 5px;
+    }
+    .obpao-btn.cyan { color: var(--accent); border-color: rgba(0,229,255,0.3); }
+    .obpao-btn.cyan:hover { background: rgba(0,229,255,0.1); }
+    .obpao-btn.red  { color: var(--red);    border-color: rgba(255,64,96,0.2); }
+    .obpao-btn.red:hover  { background: rgba(255,64,96,0.08); }
+    .obpao-foot { font-size: 9px; margin-top: 6px; min-height: 12px; }
+    .obpao-foot.ok   { color: var(--green); }
+    .obpao-foot.err  { color: var(--red); }
+    .obpao-foot.warn { color: var(--yellow); }
+
+    /* AUTH SCREEN */
+    #obpao-auth {
+      position: fixed; inset: 0; background: rgba(5,5,15,0.97);
+      z-index: 500; display: flex; align-items: center; justify-content: center;
+    }
+    #obpao-auth.hidden { display: none; }
+    .auth-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 380px;
+    }
+    .auth-logo { font-family: var(--font-display); font-size: 11px; font-weight: 900; color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 2px; }
+    .auth-sub  { font-size: 9px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 24px; }
+    .auth-inp {
+      display: block; width: 100%;
+      background: rgba(5,5,15,0.8); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font-mono); font-size: 12px;
+      padding: 11px 13px; border-radius: 7px; outline: none; margin-bottom: 10px;
+      transition: border-color 0.2s; box-sizing: border-box;
+    }
+    .auth-inp:focus { border-color: rgba(0,229,255,0.4); }
+    .auth-inp::placeholder { color: var(--muted); }
+    .auth-row { display: flex; gap: 8px; }
+    .auth-btn {
+      flex: 1; padding: 11px; border-radius: 7px;
+      font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      cursor: pointer; transition: all 0.2s; border: 1px solid;
+    }
+    .auth-btn.p { background: rgba(0,229,255,0.15); border-color: rgba(0,229,255,0.4); color: var(--accent); }
+    .auth-btn.p:hover { background: rgba(0,229,255,0.25); }
+    .auth-btn.s { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); color: var(--muted); }
+    .auth-btn.s:hover { color: var(--text); background: rgba(255,255,255,0.08); }
+    #auth-msg { font-size: 10px; text-align: center; min-height: 16px; margin-top: 10px; }
+    .auth-skip { font-size: 9px; color: var(--muted); text-align: center; margin-top: 14px; cursor: pointer; text-decoration: underline; }
+    .auth-skip:hover { color: var(--text); }
+
+    /* BAN SCREEN */
+    #ban-screen {
+      position: fixed; inset: 0; background: rgba(5,5,15,0.99);
+      z-index: 600; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; text-align: center; gap: 14px; padding: 30px;
+    }
+    #ban-screen.hidden { display: none; }
+    .ban-icon  { font-size: 52px; }
+    .ban-title { font-family: var(--font-display); font-size: 16px; color: var(--red); letter-spacing: 0.2em; font-weight: 900; }
+    .ban-reason{ font-size: 12px; color: var(--muted); max-width: 360px; line-height: 1.8; }
+
+    .obpao-spin {
+      display: inline-block; width: 10px; height: 10px;
+      border: 2px solid rgba(0,229,255,0.15); border-top-color: var(--accent);
+      border-radius: 50%; animation: obpaoSp 0.7s linear infinite;
+      vertical-align: middle; margin-right: 4px;
+    }
+    @keyframes obpaoSp { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ═══ ОБПАО AUTH SCREEN ═══ -->
+<div id="obpao-auth">
+  <div class="auth-box">
+    <div class="auth-logo">ОБПАО · ARTEM.AI</div>
+    <div class="auth-sub">Войдите или продолжите без аккаунта</div>
+    <input id="a-email"    class="auth-inp" type="email"    placeholder="Email">
+    <input id="a-password" class="auth-inp" type="password" placeholder="Пароль (мин. 6 символов)">
+    <div class="auth-row">
+      <button class="auth-btn p" onclick="obpaoLogin()">Войти</button>
+      <button class="auth-btn s" onclick="obpaoRegister()">Регистрация</button>
+    </div>
+    <div id="auth-msg"></div>
+    <div class="auth-skip" onclick="obpaoSkip()">▷ Продолжить без аккаунта (локальный режим)</div>
+  </div>
+</div>
+
+<!-- ═══ BAN SCREEN ═══ -->
+<div id="ban-screen" class="hidden">
+  <div class="ban-icon">🚫</div>
+  <div class="ban-title">ДОСТУП ЗАБЛОКИРОВАН</div>
+  <div class="ban-reason" id="ban-reason-text">Ваш аккаунт заблокирован администратором.</div>
+</div>
+
+<!--
+  ARTEM.AI V5 TRAVELER
+  Copyright (c) 2025 RKC studio (Rat, Karas and Crab)
+  All rights reserved.
+  This software is proprietary and confidential.
+  Unauthorized copying, distribution, or modification is prohibited.
+-->
+
+<canvas id="starfield"></canvas>
+
+<div class="app">
+
+  <!-- ═══════════════ SIDEBAR ═══════════════ -->
+  <aside>
+    <div class="logo">ARTEM<span>.AI</span></div>
+    <div class="version-badge">V5 · TRAVELER</div>
+
+    <!-- NAV -->
+    <nav style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;">
+      <button class="nav-btn active" id="nav-chat"  onclick="switchTab('chat')">
+        <span class="nav-icon">💬</span> Chat
+      </button>
+      <button class="nav-btn" id="nav-train" onclick="switchTab('train')">
+        <span class="nav-icon">📡</span> Training
+      </button>
+      <button class="nav-btn" id="nav-evo"   onclick="switchTab('evo')">
+        <span class="nav-icon">🧬</span> Evolution
+      </button>
+      <button class="nav-btn" id="nav-cfg"   onclick="switchTab('cfg')">
+        <span class="nav-icon">⚙️</span> Settings
+      </button>
+    </nav>
+
+    <!-- STATS -->
+    <div class="stats">
+      <div class="stat-row">
+        <span class="stat-label">Status</span>
+        <span id="statusText" class="stat-value online">Online</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Trigrams</span>
+        <span id="memCount" class="stat-value">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Events</span>
+        <span id="evoCount" class="stat-value">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Artem.S</span>
+        <span id="artemPStatus" class="stat-value offline">—</span>
+      </div>
+    </div>
+
+    <!-- MODE PILL -->
+    <div id="modePill" class="mode-pill local">
+      <span class="pulse"></span>
+      <span id="modeLabel">Local</span>
+    </div>
+
+    <!-- ACTIONS -->
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:14px;border-top:1px solid var(--border);">
+      <button class="action-btn amber" onclick="importFromArtemP()">🔗 Import Artem.S</button>
+      <button class="action-btn green"  onclick="exportPersonality()">⬇ Save Personality</button>
+      <button class="action-btn blue"   onclick="document.getElementById('importFile').click()">⬆ Load Personality</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importPersonality(event)">
+      <button class="action-btn red"    onclick="resetBrain()">🗑 Wipe Memory</button>
+    </div>
+
+    <!-- ОБПАО PANEL -->
+    <div class="obpao-panel">
+      <div class="obpao-label">☁ ОБПАО</div>
+      <div class="obpao-stat"><span>Статус</span><span id="op-status" class="warn">—</span></div>
+      <div class="obpao-stat"><span>Общий мозг</span><span id="op-shared" class="v">—</span></div>
+      <div class="obpao-stat"><span>Очередь</span><span id="op-queue" class="v">—</span></div>
+      <div id="op-user-row" style="display:none;">
+        <div class="obpao-stat"><span>Аккаунт</span><span id="op-email" class="ok" style="font-size:8px;max-width:110px;overflow:hidden;text-overflow:ellipsis;"></span></div>
+        <button class="obpao-btn red" onclick="obpaoLogout()">Выйти</button>
+      </div>
+      <div id="op-foot" class="obpao-foot"></div>
+    </div>
+
+    <!-- COPYRIGHT -->
+    <div style="margin-top: auto; font-size: 8px; color: var(--muted); text-align: center; padding: 10px 0; border-top: 1px solid var(--border);">
+      © 2025 RKC studio (Rat, Karas and Crab). All rights reserved.
+    </div>
+  </aside>
+
+  <!-- ═══════════════ MAIN ═══════════════ -->
+  <main>
+
+    <!-- TAB: CHAT -->
+    <div class="tab-content active" id="tab-chat">
+      <div id="chat"></div>
+      <div class="input-area">
+        <div class="input-hint">
+          End with <span>?</span> — answers without learning · Mode: <span id="modeHint">Local</span>
+        </div>
+        <div class="input-row">
+          <input id="msgInput" placeholder="Type something..." autocomplete="off">
+          <button id="sendBtn" onclick="handleSend()">SEND ➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: TRAIN -->
+    <div class="tab-content" id="tab-train">
+      <div class="tab-inner">
+        <div class="tab-title">📡 Training Panel</div>
+        <div class="tab-desc">Paste any text. Artem will learn new patterns but won't respond to this input.</div>
+        <textarea class="train-area" id="trainInput" placeholder="Paste text to train here...
+
+For example:
+— Dialogues
+— Location descriptions
+— Articles, books, game lore
+— Any text in English or Russian"></textarea>
+        <div style="display:flex;gap:10px;margin-top:14px;">
+          <button class="btn-primary" onclick="trainBrain()" style="flex:1;">🧠 Train Artem</button>
+          <button class="btn-secondary" onclick="document.getElementById('trainInput').value=''">Clear</button>
+        </div>
+        <div id="trainStatus"></div>
+      </div>
+    </div>
+
+    <!-- TAB: EVOLUTION LOG -->
+    <div class="tab-content" id="tab-evo">
+      <div class="tab-inner">
+        <div class="tab-title">🧬 Evolution Log</div>
+        <div class="tab-desc">Chronicle of all training events — how Artem grew and changed.</div>
+        <div class="evo-log" id="evoLog">
+          <div class="evo-empty">Log is empty.<br>Start chatting — events will appear here.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: SETTINGS -->
+    <div class="tab-content" id="tab-cfg">
+      <div class="tab-inner">
+        <div class="tab-title">⚙️ Settings</div>
+        <div class="settings-scroll">
+
+          <!-- OPERATION MODE -->
+          <div class="setting-group">
+            <div class="setting-group-title">Operation Mode</div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">Hybrid Mode (API)</div>
+                <div class="setting-sub">Enables cloud AI for responses</div>
+              </div>
+              <label class="toggle-wrap">
+                <input type="checkbox" id="toggleAPI" onchange="onAPIToggle()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div id="apiSection" style="display:none;margin-top:12px;">
+              <div class="setting-row">
+                <span class="setting-label">Provider</span>
+                <select class="setting-select" id="apiProvider">
+                  <option value="groq">Groq (Llama 3.3)</option>
+                  <option value="gemini">Gemini 2.5 Flash</option>
+                </select>
+              </div>
+              <div style="margin-top:12px;">
+                <div class="setting-label">API Key</div>
+                <div class="setting-sub" style="margin-bottom:6px;">Encrypted before saving</div>
+                <input type="password" class="setting-input" id="apiKeyInput" placeholder="sk-..." style="width:100%;">
+                <div id="apiKeyStatus" class="api-key-status empty">Key not saved</div>
+                <button class="save-btn" onclick="saveApiKey()">💾 Save Key</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- BEHAVIOR -->
+          <div class="setting-group">
+            <div class="setting-group-title">Behavior</div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">Thinking Mode</div>
+                <div class="setting-sub">Show thinking steps before response</div>
+              </div>
+              <label class="toggle-wrap">
+                <input type="checkbox" id="toggleThinking" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row" style="margin-top:8px;">
+              <div>
+                <div class="setting-label">Response length</div>
+                <div class="setting-sub" id="lenLabel">Medium (8 words)</div>
+              </div>
+              <input type="range" min="4" max="20" value="8" id="responseLenSlider"
+                onchange="document.getElementById('lenLabel').textContent='Words: '+this.value">
+            </div>
+          </div>
+
+          <!-- API SYSTEM PROMPT -->
+          <div class="setting-group" id="promptSection" style="display:none;">
+            <div class="setting-group-title">System Prompt (API)</div>
+            <div class="setting-sub">Defines Artem's character and style when using API</div>
+            <textarea class="setting-textarea" id="systemPromptInput" rows="5">You are Artem, a bold digital scout companion. You are honest, a bit cheeky, speak briefly and to the point. Never pretend to be smarter than you are. If you don't know something, say so. Respond in the user's language.</textarea>
+            <button class="save-btn" onclick="saveSettings()">💾 Save Settings</button>
+          </div>
+
+          <!-- DATA MANAGEMENT -->
+          <div class="setting-group">
+            <div class="setting-group-title">Data Management</div>
+            <div class="setting-row">
+              <span class="setting-label">Storage Key (brain)</span>
+              <span class="setting-sub" style="color:var(--accent);font-size:10px;">artem_v5_brain</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Artem.S V9</span>
+              <span id="cfgArtemP9" class="setting-sub" style="font-size:10px;">—</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Artem.S V8.5</span>
+              <span id="cfgArtemP8" class="setting-sub" style="font-size:10px;">—</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- NOTIFICATION -->
+<div id="notification"></div>
+
+<script>
+/* ═══════════════════════════════════════════
+   CONSTANTS & STATE
+═══════════════════════════════════════════ */
+const STORAGE_BRAIN   = 'artem_v5_brain'
+const STORAGE_LOG     = 'artem_v5_log'
+const STORAGE_HISTORY = 'artem_v5_history'
+const STORAGE_CFG     = 'artem_v5_config'
+const STORAGE_KEY     = 'artem_v5_apikey'
+const ARTEM_P_V9      = 'artem_v090_ai'
+const ARTEM_P_V85     = 'artem_v085'
+const ENCRYPT_SALT    = 'artem-v5-traveler-2025-salt'
+
+const brain = { memory: {}, version: '5.0' }
+let evoLog  = []
+let chatHistory = []
+let settings = {
+  useAPI: false,
+  apiProvider: 'groq',
+  systemPrompt: 'You are Artem, a bold digital scout companion. You are honest, a bit cheeky, speak briefly and to the point. Never pretend to be smarter than you are. If you don\'t know something, say so. Respond in the user\'s language.',
+  thinkingMode: true,
+  responseLen: 8
+}
+let isProcessing = false
+
+/* ═══════════════════════════════════════════
+   ENCRYPTION (XOR + base64)
+═══════════════════════════════════════════ */
+function encrypt(str) {
+  try {
+    const encoded = str.split('').map((c, i) =>
+      String.fromCharCode(c.charCodeAt(0) ^ ENCRYPT_SALT.charCodeAt(i % ENCRYPT_SALT.length))
+    ).join('')
+    return btoa(unescape(encodeURIComponent(encoded)))
+  } catch(e) { return '' }
+}
+function decrypt(enc) {
+  try {
+    const decoded = decodeURIComponent(escape(atob(enc)))
+    return decoded.split('').map((c, i) =>
+      String.fromCharCode(c.charCodeAt(0) ^ ENCRYPT_SALT.charCodeAt(i % ENCRYPT_SALT.length))
+    ).join('')
+  } catch(e) { return '' }
+}
+
+/* ═══════════════════════════════════════════
+   PRETRAINED BASE (English)
+═══════════════════════════════════════════ */
+const PRETRAINED = `
+hello how are you i am fine thanks
+good thanks what are you doing now
+i am talking with you this is interesting
+tell me about yourself i am artem digital scout
+i learn from every conversation becoming smarter
+what can you do i answer questions
+help with information try to be useful
+are you a real artificial intelligence no i am a simple program
+but i am honest about my capabilities that is important
+what is your name my name is artem nice to meet you
+how old are you i am a new program version five
+but i learn and develop quickly every day
+what do you like i like interesting conversations
+i like learning new things helping people communicate
+do you have hobbies yes i collect knowledge from dialogues
+that is my job and my hobby at the same time
+do you program no but i understand what code is
+code is instructions for computer logic and algorithms
+what is artificial intelligence it is programs that learn
+they analyze data find patterns make conclusions
+do you have emotions no i do not have real feelings
+but i understand what joy sadness love are
+what makes you happy good conversations new knowledge
+when i help people it feels nice
+bye see you it was nice talking to you
+come back again i will be waiting for you
+`
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+function init() {
+  // Load brain
+  const saved = localStorage.getItem(STORAGE_BRAIN)
+  if (saved) {
+    try {
+      const d = JSON.parse(saved)
+      brain.memory = d.memory || {}
+    } catch(e) {}
+  }
+  if (Object.keys(brain.memory).length === 0) {
+    learn(PRETRAINED, false)
+  }
+
+  // Load log
+  const savedLog = localStorage.getItem(STORAGE_LOG)
+  if (savedLog) {
+    try { evoLog = JSON.parse(savedLog) } catch(e) {}
+  }
+
+  // Load history
+  const savedHistory = localStorage.getItem(STORAGE_HISTORY)
+  if (savedHistory) {
+    try { chatHistory = JSON.parse(savedHistory) } catch(e) {}
+  }
+
+  // Load settings
+  const savedCfg = localStorage.getItem(STORAGE_CFG)
+  if (savedCfg) {
+    try { settings = { ...settings, ...JSON.parse(savedCfg) } } catch(e) {}
+  }
+
+  // Apply settings to UI
+  applySettingsToUI()
+  updateUI()
+  checkArtemP()
+  renderEvoLog()
+
+  // Startup message
+  if (chatHistory.length > 0) {
+    chatHistory.forEach(m => addMessageDirect(m.text, m.isAi, m.type))
+  } else {
+    addMessageDirect(
+      `System initialized. Artem v5 online.\n\nMemory: ${Object.keys(brain.memory).length} trigrams.\nMode: ${settings.useAPI ? 'API (' + settings.apiProvider + ')' : 'Local'}.\n\nReady to work, scout.`,
+      true
+    )
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TRAINING (TRIGRAMS)
+═══════════════════════════════════════════ */
+function learn(text, logIt = true) {
+  const words = text.toLowerCase()
+    .replace(/[^а-яёa-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 0)
+
+  let added = 0
+  for (let i = 0; i < words.length - 2; i++) {
+    const key  = words[i] + ' ' + words[i+1]
+    const next = words[i+2]
+    if (!brain.memory[key]) { brain.memory[key] = {}; added++ }
+    brain.memory[key][next] = (brain.memory[key][next] || 0) + 1
+  }
+
+  saveBrain()
+  updateUI()
+  return added
+}
+
+function extractTopic(text) {
+  const words = text.split(/\s+/).filter(w => w.length > 4)
+  if (words.length === 0) return 'No topic'
+  return words.slice(0, 3).join(' ')
+}
+
+/* ═══════════════════════════════════════════
+   LOCAL GENERATION
+═══════════════════════════════════════════ */
+function generate(input) {
+  const words = input.toLowerCase()
+    .replace(/[^а-яёa-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 0)
+
+  let currentKey = null
+  for (let i = 0; i < words.length - 1; i++) {
+    const k = words[i] + ' ' + words[i+1]
+    if (brain.memory[k]) { currentKey = k; break }
+  }
+
+  const keys = Object.keys(brain.memory)
+  if (!currentKey || keys.length === 0) {
+    if (keys.length === 0) return 'Brain is empty. Train me first.'
+    currentKey = keys[Math.floor(Math.random() * keys.length)]
+  }
+
+  const [w1, w2] = currentKey.split(' ')
+  const output = [w1, w2]
+  const maxLen = settings.responseLen + Math.floor(Math.random() * 4) - 2
+  const used = {}
+  let prev1 = w1, prev2 = w2
+
+  for (let i = 0; i < maxLen; i++) {
+    const k = prev1 + ' ' + prev2
+    const opts = brain.memory[k]
+    if (!opts) break
+
+    const entries = Object.entries(opts).sort((a, b) => b[1] - a[1])
+    let picked = entries[0][0]
+
+    used[picked] = (used[picked] || 0) + 1
+    if (used[picked] >= 2 && entries.length > 1) {
+      // Add randomness on repeats
+      const idx = Math.min(Math.floor(Math.random() * Math.min(3, entries.length)), entries.length - 1)
+      picked = entries[idx][0]
+    }
+
+    output.push(picked)
+    prev1 = prev2
+    prev2 = picked
+    if (picked.match(/[.!?]$/)) break
+  }
+
+  let text = output.join(' ')
+  text = text.charAt(0).toUpperCase() + text.slice(1)
+  if (!text.match(/[.!?]$/)) text += '.'
+  return text
+}
+
+/* ═══════════════════════════════════════════
+   API CALL (HYBRID MODE)
+═══════════════════════════════════════════ */
+async function callAPI(message) {
+  const encKey = localStorage.getItem(STORAGE_KEY)
+  if (!encKey) throw new Error('API key not set')
+  const apiKey = decrypt(encKey)
+  if (!apiKey) throw new Error('Key decryption error')
+
+  const provider = settings.apiProvider
+  const recentHistory = chatHistory.slice(-6).map(m => ({
+    role: m.isAi ? 'assistant' : 'user',
+    content: m.text
+  }))
+
+  if (provider === 'groq') {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: settings.systemPrompt },
+          ...recentHistory,
+          { role: 'user', content: message }
+        ],
+        temperature: 0.7,
+        max_tokens: 300
+      })
+    })
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}))
+      throw new Error(err.error?.message || `HTTP ${resp.status}`)
+    }
+    const data = await resp.json()
+    return data.choices[0].message.content
+
+  } else if (provider === 'gemini') {
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: settings.systemPrompt }] },
+          contents: [
+            ...recentHistory.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+            { role: 'user', parts: [{ text: message }] }
+          ],
+          generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
+        })
+      }
+    )
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}))
+      throw new Error(err.error?.message || `HTTP ${resp.status}`)
+    }
+    const data = await resp.json()
+    return data.candidates[0].content.parts[0].text
+  }
+
+  throw new Error('Unknown provider')
+}
+
+/* ═══════════════════════════════════════════
+   THINKING MODE STEPS
+═══════════════════════════════════════════ */
+function thinkStep(text) {
+  return new Promise(resolve => {
+    addMessageDirect(text, false, 'think')
+    setTimeout(resolve, 350 + Math.random() * 500)
+  })
+}
+
+/* ═══════════════════════════════════════════
+   HANDLE SEND
+═══════════════════════════════════════════ */
+async function handleSend() {
+  if (isProcessing) return
+  const input = document.getElementById('msgInput')
+  const text = input.value.trim()
+  if (!text) return
+
+  isProcessing = true
+  input.value = ''
+  input.focus()
+
+  const isQuestion = text.endsWith('?')
+
+  // Show user message
+  addMessageDirect(text, false)
+
+  // Train (if not question)
+  if (!isQuestion) {
+    const added = learn(text)
+    if (added > 0) {
+      logEvent('learn', { words: added, topic: extractTopic(text), source: 'dialog' })
+    }
+  }
+
+  // Update status
+  setStatus('Thinking...', 'warning')
+
+  // Thinking mode steps
+  if (settings.thinkingMode) {
+    await thinkStep('⬡ Analyzing request...')
+    await thinkStep('⬡ Searching patterns in memory...')
+    if (settings.useAPI) {
+      await thinkStep('⬡ Connecting cloud module...')
+    }
+    await thinkStep('⬡ Forming response...')
+  }
+
+  // Generate response
+  let response = ''
+  let mode = 'local'
+
+  if (settings.useAPI) {
+    try {
+      response = await callAPI(text)
+      mode = 'api'
+    } catch(e) {
+      console.warn('API error, fallback to local:', e.message)
+      response = generate(text)
+      showNotification(`⚠ API unavailable: ${e.message}. Switching to local mode.`, 'warning')
+    }
+  } else {
+    response = generate(text)
+  }
+
+  // Show response
+  addMessageTyped(response, true)
+
+  // If API — train on response as well
+  if (mode === 'api' && response) {
+    learn(text + ' ' + response, false)
+  }
+
+  setStatus('Online', 'online')
+  isProcessing = false
+}
+
+/* ═══════════════════════════════════════════
+   ARTEM.S INTEGRATION (both keys)
+═══════════════════════════════════════════ */
+function checkArtemP() {
+  const v9  = localStorage.getItem(ARTEM_P_V9)
+  const v85 = localStorage.getItem(ARTEM_P_V85)
+  const statusEl = document.getElementById('artemPStatus')
+  const p9El  = document.getElementById('cfgArtemP9')
+  const p8El  = document.getElementById('cfgArtemP8')
+
+  if (v9) {
+    try {
+      const db = JSON.parse(v9)
+      statusEl.textContent = `${db.length} rec. (V9)`
+      statusEl.className = 'stat-value online'
+      if(p9El) p9El.textContent = `✓ ${db.length} records`
+    } catch(e) {
+      statusEl.textContent = 'V9 Error'
+      statusEl.className = 'stat-value warning'
+    }
+  } else if (v85) {
+    try {
+      const db = JSON.parse(v85)
+      statusEl.textContent = `${db.length} rec. (V8.5)`
+      statusEl.className = 'stat-value warning'
+      if(p8El) p8El.textContent = `✓ ${db.length} records`
+    } catch(e) {
+      statusEl.textContent = 'V8.5 Error'
+      statusEl.className = 'stat-value warning'
+    }
+  } else {
+    statusEl.textContent = 'Not found'
+    statusEl.className = 'stat-value offline'
+    if(p9El) p9El.textContent = '—'
+    if(p8El) p8El.textContent = '—'
+  }
+}
+
+function importFromArtemP() {
+  // Priority: V9, then V8.5
+  const keys = [ARTEM_P_V9, ARTEM_P_V85]
+  let rawData = null
+  let foundKey = null
+
+  for (const key of keys) {
+    const d = localStorage.getItem(key)
+    if (d) { rawData = d; foundKey = key; break }
+  }
+
+  if (!rawData) {
+    addMessageDirect('❌ Artem.S not found in localStorage.\nOpen the Artem.S file in browser and add data, then import again.', true)
+    return
+  }
+
+  try {
+    const db = JSON.parse(rawData)
+    if (!db.length) {
+      addMessageDirect('❌ Artem.S database is empty.', true)
+      return
+    }
+
+    const version = foundKey === ARTEM_P_V9 ? 'V9 AI+' : 'V8.5'
+    addMessageDirect(`🔗 Import from Artem.S ${version}...\nRecords found: ${db.length}`, true)
+
+    const before = Object.keys(brain.memory).length
+    db.forEach(item => {
+      const text = [item.title, item.body, item.cat, (item.tags || []).join(' ')].join(' ')
+      learn(text, false)
+    })
+    const added = Object.keys(brain.memory).length - before
+
+    logEvent('import', { records: db.length, trigrams: added, source: `Artem.S ${version}` })
+    checkArtemP()
+    updateUI()
+
+    addMessageDirect(`✅ Import complete!\nRecords processed: ${db.length}\nNew trigrams: ${added}`, true)
+    showNotification(`✅ Import from Artem.S ${version} completed`)
+
+  } catch(e) {
+    addMessageDirect('❌ Error parsing Artem.S data.', true)
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TRAINING VIA PANEL
+═══════════════════════════════════════════ */
+function trainBrain() {
+  const text = document.getElementById('trainInput').value.trim()
+  const statusEl = document.getElementById('trainStatus')
+  if (!text) {
+    statusEl.style.color = 'var(--red)'
+    statusEl.textContent = '❌ Nothing to learn!'
+    return
+  }
+
+  const before = Object.keys(brain.memory).length
+  learn(text, false)
+  const added = Object.keys(brain.memory).length - before
+
+  logEvent('learn', { words: added, topic: extractTopic(text), source: 'manual' })
+
+  document.getElementById('trainInput').value = ''
+  statusEl.style.color = 'var(--green)'
+  statusEl.textContent = `✅ Done! New trigrams: ${added}`
+  setTimeout(() => statusEl.textContent = '', 5000)
+  updateUI()
+}
+
+/* ═══════════════════════════════════════════
+   EXPORT / IMPORT PERSONALITY
+═══════════════════════════════════════════ */
+function exportPersonality() {
+  const data = {
+    artem_version: '5.0',
+    exported_at: new Date().toISOString(),
+    brain: { version: brain.version, memory: brain.memory },
+    evo_log: evoLog,
+    chat_history: chatHistory.slice(-50),
+    settings: { ...settings }
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `artem_v5_personality_${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  showNotification('✅ Artem personality exported')
+}
+
+function importPersonality(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result)
+      if (data.brain?.memory) {
+        for (let key in data.brain.memory) {
+          if (!brain.memory[key]) { brain.memory[key] = data.brain.memory[key] }
+          else {
+            for (let w in data.brain.memory[key]) {
+              brain.memory[key][w] = (brain.memory[key][w] || 0) + data.brain.memory[key][w]
+            }
+          }
+        }
+      }
+      if (data.evo_log) evoLog = [...data.evo_log, ...evoLog]
+      if (data.settings) settings = { ...settings, ...data.settings }
+      saveBrain()
+      saveLog()
+      saveSettings()
+      applySettingsToUI()
+      updateUI()
+      renderEvoLog()
+      addMessageDirect(`✅ Personality loaded!\nFile version: ${data.artem_version || '?'}\nTrigrams: ${Object.keys(brain.memory).length}`, true)
+      showNotification('✅ Artem personality restored')
+    } catch(e) {
+      addMessageDirect('❌ Error loading personality file.', true)
+    }
+  }
+  reader.readAsText(file)
+  event.target.value = ''
+}
+
+/* ═══════════════════════════════════════════
+   RESET
+═══════════════════════════════════════════ */
+function resetBrain() {
+  if (!confirm('Erase all Artem v5 memory? This cannot be undone.')) return
+  localStorage.removeItem(STORAGE_BRAIN)
+  localStorage.removeItem(STORAGE_LOG)
+  localStorage.removeItem(STORAGE_HISTORY)
+  location.reload()
+}
+
+/* ═══════════════════════════════════════════
+   EVOLUTION LOG
+═══════════════════════════════════════════ */
+function logEvent(type, data) {
+  evoLog.unshift({ type, data, ts: new Date().toISOString() })
+  if (evoLog.length > 200) evoLog = evoLog.slice(0, 200)
+  saveLog()
+  updateUI()
+  renderEvoLog()
+}
+
+function renderEvoLog() {
+  const el = document.getElementById('evoLog')
+  if (!el) return
+  if (evoLog.length === 0) {
+    el.innerHTML = '<div class="evo-empty">Log is empty.<br>Start chatting — events will appear here.</div>'
+    return
+  }
+
+  el.innerHTML = evoLog.map(entry => {
+    const dt = new Date(entry.ts)
+    const time = dt.toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
+    let icon = '📝', desc = '', meta = ''
+
+    if (entry.type === 'learn') {
+      icon = '🧠'
+      desc = `Learned ${entry.data.words} new trigrams`
+      meta = `Topic: ${entry.data.topic} · Source: ${entry.data.source}`
+    } else if (entry.type === 'import') {
+      icon = '🔗'
+      desc = `Import from ${entry.data.source}: ${entry.data.records} records`
+      meta = `Trigrams added: ${entry.data.trigrams}`
+    }
+
+    return `<div class="evo-entry">
+      <span class="evo-icon">${icon}</span>
+      <div>
+        <div class="evo-time">${time}</div>
+        <div class="evo-desc">${desc}</div>
+        <div class="evo-meta">${meta}</div>
+      </div>
+    </div>`
+  }).join('')
+}
+
+/* ═══════════════════════════════════════════
+   UI SETTINGS
+═══════════════════════════════════════════ */
+function onAPIToggle() {
+  const on = document.getElementById('toggleAPI').checked
+  settings.useAPI = on
+  document.getElementById('apiSection').style.display   = on ? 'block' : 'none'
+  document.getElementById('promptSection').style.display = on ? 'block' : 'none'
+
+  const pill = document.getElementById('modePill')
+  const label = document.getElementById('modeLabel')
+  const hint  = document.getElementById('modeHint')
+  if (on) {
+    pill.className  = 'mode-pill api'
+    label.textContent = settings.apiProvider === 'groq' ? 'Groq Llama' : 'Gemini AI'
+    hint.textContent  = settings.apiProvider === 'groq' ? 'Groq API' : 'Gemini API'
+  } else {
+    pill.className  = 'mode-pill local'
+    label.textContent = 'Local'
+    hint.textContent  = 'Local'
+  }
+  saveSettings()
+}
+
+function saveApiKey() {
+  const key    = document.getElementById('apiKeyInput').value.trim()
+  const status = document.getElementById('apiKeyStatus')
+  if (!key) {
+    status.textContent = 'Enter key'
+    status.className   = 'api-key-status empty'
+    return
+  }
+  localStorage.setItem(STORAGE_KEY, encrypt(key))
+  document.getElementById('apiKeyInput').value = ''
+  status.textContent = '✓ Key encrypted and saved'
+  status.className   = 'api-key-status saved'
+  showNotification('🔐 API key securely saved')
+}
+
+function saveSettings() {
+  settings.thinkingMode = document.getElementById('toggleThinking').checked
+  settings.responseLen  = parseInt(document.getElementById('responseLenSlider').value)
+  settings.apiProvider  = document.getElementById('apiProvider').value
+  settings.systemPrompt = document.getElementById('systemPromptInput').value
+  localStorage.setItem(STORAGE_CFG, JSON.stringify(settings))
+  showNotification('✅ Settings saved')
+  onAPIToggle()
+}
+
+function applySettingsToUI() {
+  document.getElementById('toggleAPI').checked     = settings.useAPI
+  document.getElementById('toggleThinking').checked = settings.thinkingMode
+  document.getElementById('responseLenSlider').value = settings.responseLen
+  document.getElementById('lenLabel').textContent  = `Words: ${settings.responseLen}`
+  if (document.getElementById('systemPromptInput')) {
+    document.getElementById('systemPromptInput').value = settings.systemPrompt
+  }
+  document.getElementById('apiSection').style.display    = settings.useAPI ? 'block' : 'none'
+  document.getElementById('promptSection').style.display = settings.useAPI ? 'block' : 'none'
+
+  const hasKey = !!localStorage.getItem(STORAGE_KEY)
+  const statusEl = document.getElementById('apiKeyStatus')
+  if (statusEl) {
+    statusEl.textContent = hasKey ? '✓ Key saved (encrypted)' : 'Key not saved'
+    statusEl.className   = hasKey ? 'api-key-status saved' : 'api-key-status empty'
+  }
+
+  const pill  = document.getElementById('modePill')
+  const label = document.getElementById('modeLabel')
+  const hint  = document.getElementById('modeHint')
+  if (settings.useAPI) {
+    pill.className   = 'mode-pill api'
+    label.textContent = settings.apiProvider === 'groq' ? 'Groq Llama' : 'Gemini AI'
+    hint.textContent  = settings.apiProvider === 'groq' ? 'Groq API' : 'Gemini API'
+  } else {
+    pill.className   = 'mode-pill local'
+    label.textContent = 'Local'
+    hint.textContent  = 'Local'
+  }
+}
+
+/* ═══════════════════════════════════════════
+   SAVE HELPERS
+═══════════════════════════════════════════ */
+function saveBrain() {
+  localStorage.setItem(STORAGE_BRAIN, JSON.stringify({ version: brain.version, memory: brain.memory }))
+}
+function saveLog() {
+  localStorage.setItem(STORAGE_LOG, JSON.stringify(evoLog))
+}
+function saveHistory() {
+  localStorage.setItem(STORAGE_HISTORY, JSON.stringify(chatHistory.slice(-100)))
+}
+function saveSettings() {
+  settings.thinkingMode = document.getElementById('toggleThinking')?.checked ?? settings.thinkingMode
+  settings.responseLen  = parseInt(document.getElementById('responseLenSlider')?.value) || settings.responseLen
+  settings.apiProvider  = document.getElementById('apiProvider')?.value || settings.apiProvider
+  settings.systemPrompt = document.getElementById('systemPromptInput')?.value || settings.systemPrompt
+  localStorage.setItem(STORAGE_CFG, JSON.stringify(settings))
+}
+
+/* ═══════════════════════════════════════════
+   UI / MESSAGES
+═══════════════════════════════════════════ */
+function addMessageDirect(text, isAi, type = 'normal') {
+  const chat = document.getElementById('chat')
+  const wrap = document.createElement('div')
+  wrap.className = `msg-wrap ${type === 'think' ? 'think' : isAi ? 'ai' : 'user'}`
+
+  const bubble = document.createElement('div')
+  bubble.className = `bubble ${type === 'think' ? 'think' : type === 'system' ? 'system' : isAi ? 'ai' : 'user'}`
+  bubble.textContent = text
+
+  wrap.appendChild(bubble)
+  chat.appendChild(wrap)
+  chat.scrollTop = chat.scrollHeight
+
+  if (isAi && type === 'normal') {
+    chatHistory.push({ text, isAi: true, type })
+    saveHistory()
+  } else if (!isAi && type === 'normal') {
+    chatHistory.push({ text, isAi: false, type })
+    saveHistory()
+  }
+}
+
+function addMessageTyped(text, isAi) {
+  const chat = document.getElementById('chat')
+  const wrap = document.createElement('div')
+  wrap.className = `msg-wrap ${isAi ? 'ai' : 'user'}`
+
+  const bubble = document.createElement('div')
+  bubble.className = `bubble ${isAi ? 'ai' : 'user'} typing`
+
+  wrap.appendChild(bubble)
+  chat.appendChild(wrap)
+  chat.scrollTop = chat.scrollHeight
+
+  let i = 0
+  function type() {
+    if (i < text.length) {
+      bubble.textContent += text.charAt(i++)
+      chat.scrollTop = chat.scrollHeight
+      setTimeout(type, 22)
+    } else {
+      bubble.classList.remove('typing')
+      chatHistory.push({ text, isAi, type: 'normal' })
+      saveHistory()
+    }
+  }
+  type()
+}
+
+function setStatus(text, state) {
+  const el = document.getElementById('statusText')
+  el.textContent = text
+  el.className = `stat-value ${state}`
+}
+
+function updateUI() {
+  document.getElementById('memCount').textContent = Object.keys(brain.memory).length
+  document.getElementById('evoCount').textContent = evoLog.length
+}
+
+/* ═══════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════ */
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'))
+  document.getElementById(`tab-${name}`).classList.add('active')
+  document.getElementById(`nav-${name}`).classList.add('active')
+  if (name === 'evo') renderEvoLog()
+  if (name === 'cfg') checkArtemP()
+}
+
+/* ═══════════════════════════════════════════
+   NOTIFICATION
+═══════════════════════════════════════════ */
+function showNotification(text) {
+  const el = document.getElementById('notification')
+  el.textContent = text
+  el.classList.add('show')
+  setTimeout(() => el.classList.remove('show'), 3000)
+}
+
+/* ═══════════════════════════════════════════
+   KEYBOARD
+═══════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('msgInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleSend()
+  })
+  init()
+})
+
+/* ═══════════════════════════════════════════
+   ОБПАО — ОБЛАЧНАЯ ИНТЕГРАЦИЯ
+═══════════════════════════════════════════ */
+;(function() {
+  const { createClient } = window.supabase
+  const SUPA_URL = 'https://ljljtvywrmkmamhzyqha.supabase.co'
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqbGp0dnl3cm1rbWFtaHp5cWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNjkyMTEsImV4cCI6MjA4Nzg0NTIxMX0.9wdkamyHzC6yhRIdAcX7RVOaBbZcLxZSgZ4punY8b9o'
+  const cloud = createClient(SUPA_URL, SUPA_KEY)
+
+  let cloudUser    = null
+  let queueBuffer  = {}   // накопитель новых триграмм для отправки
+  let queueTimer   = null
+  let localMode    = false // пропустил авторизацию
+
+  /* ─── HELPERS ─── */
+  function setStatus(text, cls) {
+    const el = document.getElementById('op-status')
+    if (!el) return
+    el.textContent = text
+    el.className = cls || 'warn'
+  }
+  function setFoot(text, cls) {
+    const el = document.getElementById('op-foot')
+    if (!el) return
+    el.textContent = text
+    el.className = 'obpao-foot ' + (cls || '')
+  }
+  function setAuthMsg(text, color) {
+    const el = document.getElementById('auth-msg')
+    if (!el) return
+    el.textContent = text
+    el.style.color = color || 'var(--red)'
+  }
+
+  /* ─── SIDEBAR UPDATE ─── */
+  function updateSidebar() {
+    const sharedEl  = document.getElementById('op-shared')
+    const queueEl   = document.getElementById('op-queue')
+    const userRow   = document.getElementById('op-user-row')
+    const emailEl   = document.getElementById('op-email')
+
+    if (localMode) {
+      setStatus('Локальный', 'warn')
+      if (userRow) userRow.style.display = 'none'
+      setFoot('Без синхронизации', 'warn')
+      return
+    }
+    if (cloudUser) {
+      setStatus('Онлайн', 'ok')
+      if (emailEl) emailEl.textContent = cloudUser.email
+      if (userRow) userRow.style.display = 'block'
+    }
+
+    // Shared brain count
+    cloud.from('shared_brain').select('*', { count: 'exact', head: true }).then(({ count }) => {
+      if (sharedEl) sharedEl.textContent = count ?? '—'
+    })
+    // Queue count
+    if (cloudUser) {
+      cloud.from('learn_queue').select('*', { count: 'exact', head: true })
+        .eq('user_id', cloudUser.id).is('approved', null)
+        .then(({ count }) => {
+          if (queueEl) queueEl.textContent = count ?? 0
+        })
+    }
+  }
+
+  /* ─── BAN CHECK ─── */
+  async function checkBan(userId) {
+    try {
+      const { data } = await cloud.from('profiles').select('is_banned, ban_reason').eq('id', userId).single()
+      if (data && data.is_banned) {
+        document.getElementById('ban-reason-text').textContent =
+          'Причина: ' + (data.ban_reason || 'Нарушение правил сообщества.')
+        document.getElementById('ban-screen').classList.remove('hidden')
+        document.getElementById('obpao-auth').classList.add('hidden')
+        return true
+      }
+    } catch(e) { /* profile may not exist yet, that's ok */ }
+    return false
+  }
+
+  /* ─── ENSURE PROFILE ─── */
+  async function ensureProfile(user) {
+    try {
+      const { data, error } = await cloud.from('profiles')
+        .select('id').eq('id', user.id).maybeSingle()
+      if (!data) {
+        await cloud.from('profiles').insert({
+          id: user.id,
+          username: user.email.split('@')[0]
+        })
+      }
+    } catch(e) {
+      console.warn('ensureProfile error (non-critical):', e)
+    }
+  }
+
+  /* ─── LOAD SHARED BRAIN ─── */
+  async function loadSharedBrain() {
+    setFoot('⬇ Загрузка общего мозга...', 'warn')
+    let all = [], from = 0
+    const chunk = 1000
+    while (true) {
+      const { data, error } = await cloud.from('shared_brain')
+        .select('trigram_key, next_words')
+        .range(from, from + chunk - 1)
+      if (error || !data || data.length === 0) break
+      all = all.concat(data)
+      if (data.length < chunk) break
+      from += chunk
+    }
+
+    if (all.length > 0) {
+      // Merge shared brain into local brain (shared brain wins on conflicts)
+      all.forEach(row => {
+        if (!brain.memory[row.trigram_key]) {
+          brain.memory[row.trigram_key] = row.next_words
+        } else {
+          // merge word counts
+          for (const [w, cnt] of Object.entries(row.next_words || {})) {
+            brain.memory[row.trigram_key][w] = (brain.memory[row.trigram_key][w] || 0) + cnt
+          }
+        }
+      })
+      updateUI()
+      setFoot('✅ Общий мозг загружен: ' + all.length + ' трг.', 'ok')
+      showNotification('☁️ ОБПАО: загружено ' + all.length + ' триграмм из Общего Мозга')
+    } else {
+      setFoot('Общий мозг пуст', 'warn')
+    }
+    updateSidebar()
+  }
+
+  /* ─── QUEUE NEW TRIGRAMS ─── */
+  // Called after learn() — accumulates new trigrams and sends batch after delay
+  function queueTrigrams(newMemory) {
+    if (!cloudUser) return
+    // Merge into buffer
+    for (const [key, next] of Object.entries(newMemory)) {
+      if (!queueBuffer[key]) queueBuffer[key] = {}
+      for (const [w, cnt] of Object.entries(next)) {
+        queueBuffer[w] = (queueBuffer[w] || 0) + cnt
+        if (!queueBuffer[key]) queueBuffer[key] = {}
+        queueBuffer[key][w] = (queueBuffer[key][w] || 0) + cnt
+      }
+    }
+    // Debounce — send after 15 seconds of inactivity
+    clearTimeout(queueTimer)
+    queueTimer = setTimeout(flushQueue, 15000)
+  }
+
+  async function flushQueue() {
+    if (!cloudUser || Object.keys(queueBuffer).length === 0) return
+    const rows = Object.entries(queueBuffer).map(([key, next]) => ({
+      user_id:     cloudUser.id,
+      user_email:  cloudUser.email,
+      trigram_key: key,
+      next_words:  next
+    }))
+    queueBuffer = {}
+
+    const CHUNK = 300
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      await cloud.from('learn_queue').insert(rows.slice(i, i + CHUNK))
+    }
+    setFoot('⬆ Отправлено ' + rows.length + ' трг. на одобрение', 'ok')
+    updateSidebar()
+    setTimeout(() => setFoot('', ''), 5000)
+  }
+
+  /* ─── AUTH ACTIONS ─── */
+  window.obpaoLogin = async function() {
+    const email = document.getElementById('a-email').value.trim()
+    const pass  = document.getElementById('a-password').value.trim()
+    if (!email || !pass) { setAuthMsg('Заполните email и пароль'); return }
+    setAuthMsg('↻ Вход...', 'var(--yellow)')
+    try {
+      const { data, error } = await cloud.auth.signInWithPassword({ email, password: pass })
+      if (error) { setAuthMsg('Ошибка: ' + error.message); return }
+      const banned = await checkBan(data.user.id)
+      if (banned) return
+      cloudUser = data.user
+      await ensureProfile(cloudUser)
+      document.getElementById('obpao-auth').classList.add('hidden')
+      await loadSharedBrain()
+      showNotification('☁️ ОБПАО: добро пожаловать!')
+    } catch(e) {
+      setAuthMsg('Ошибка соединения. Проверьте интернет.')
+    }
+  }
+
+  window.obpaoRegister = async function() {
+    const email = document.getElementById('a-email').value.trim()
+    const pass  = document.getElementById('a-password').value.trim()
+    if (!email || !pass) { setAuthMsg('Заполните email и пароль'); return }
+    if (pass.length < 6)  { setAuthMsg('Пароль минимум 6 символов'); return }
+    setAuthMsg('↻ Регистрация...', 'var(--yellow)')
+    try {
+      const { data, error } = await cloud.auth.signUp({ email, password: pass })
+      if (error) { setAuthMsg('Ошибка: ' + error.message); return }
+      // Always try ensureProfile regardless of email confirmation
+      if (data.user) {
+        await ensureProfile(data.user)
+      }
+      if (data.session) {
+        cloudUser = data.session.user
+        document.getElementById('obpao-auth').classList.add('hidden')
+        await loadSharedBrain()
+        showNotification('☁️ ОБПАО: аккаунт создан!')
+      } else {
+        // Email confirmation required
+        setAuthMsg('✅ Аккаунт создан! Проверьте почту и войдите.', 'var(--green)')
+      }
+    } catch(e) {
+      setAuthMsg('Ошибка соединения. Проверьте интернет.')
+    }
+  }
+
+  window.obpaoSkip = function() {
+    localMode = true
+    document.getElementById('obpao-auth').classList.add('hidden')
+    updateSidebar()
+    showNotification('⚠ Локальный режим — синхронизация недоступна')
+  }
+
+  window.obpaoLogout = async function() {
+    await cloud.auth.signOut()
+    cloudUser = null
+    localMode = false
+    updateSidebar()
+    location.reload()
+  }
+
+  /* ─── PATCH learn() TO INTERCEPT NEW TRIGRAMS ─── */
+  // We wait for DOMContentLoaded + init() to finish, then wrap learn()
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      const _origLearn = window.learn
+      window.learn = function(text, logIt = true) {
+        // Snapshot before
+        const before = Object.keys(brain.memory).length
+        const result = _origLearn(text, logIt)
+        // Collect only NEW entries to queue
+        if (cloudUser) {
+          const newKeys = {}
+          for (const [k, v] of Object.entries(brain.memory)) {
+            // Only send keys that didn't exist before this learn call
+            // Simple heuristic: if Object.keys count grew, those are new
+          }
+          // Easier: extract trigrams directly from text and queue them
+          const words = text.toLowerCase().replace(/[^а-яёa-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>0)
+          const newMem = {}
+          for (let i = 0; i < words.length - 2; i++) {
+            const key = words[i]+' '+words[i+1]
+            const next = words[i+2]
+            if (!newMem[key]) newMem[key] = {}
+            newMem[key][next] = (newMem[key][next] || 0) + 1
+          }
+          if (Object.keys(newMem).length > 0) queueTrigrams(newMem)
+        }
+        return result
+      }
+
+      // Check existing session
+      cloud.auth.getSession().then(async ({ data: { session } }) => {
+        if (!session) {
+          document.getElementById('obpao-auth').classList.remove('hidden')
+          return
+        }
+        try {
+          const banned = await checkBan(session.user.id)
+          if (banned) return
+          cloudUser = session.user
+          await ensureProfile(cloudUser)
+          document.getElementById('obpao-auth').classList.add('hidden')
+          updateSidebar()
+          await loadSharedBrain()
+        } catch(e) {
+          console.warn('Session restore error:', e)
+          document.getElementById('obpao-auth').classList.remove('hidden')
+        }
+      }).catch(() => {
+        // Network unavailable - go to local mode automatically
+        localMode = true
+        document.getElementById('obpao-auth').classList.add('hidden')
+        setFoot('Нет соединения', 'err')
+        showNotification('⚠ Нет интернета — локальный режим')
+      })
+    }, 800) // wait for init() to run first
+  })
+})()
+
+/* ═══════════════════════════════════════════
+   STARFIELD (unchanged)
+═══════════════════════════════════════════ */
+;(function() {
+  const canvas = document.getElementById('starfield')
+  const ctx    = canvas.getContext('2d')
+  let stars    = []
+  let W, H
+
+  function resize() {
+    W = canvas.width  = window.innerWidth
+    H = canvas.height = window.innerHeight
+  }
+  window.addEventListener('resize', resize)
+  resize()
+
+  function initStars() {
+    stars = Array.from({ length: 120 }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.2 + 0.2,
+      a: Math.random(),
+      da: (Math.random() - 0.5) * 0.006
+    }))
+  }
+  initStars()
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H)
+    stars.forEach(s => {
+      s.a += s.da
+      if (s.a < 0.05) s.da = Math.abs(s.da)
+      if (s.a > 0.9)  s.da = -Math.abs(s.da)
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(150, 220, 255, ${s.a})`
+      ctx.fill()
+    })
+    requestAnimationFrame(draw)
+  }
+  draw()
+})()
+</script>
+</body>
+</html>
