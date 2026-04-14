@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARTEM.AI — V6 NEURAL CORE</title>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:      #04040e;
+  --surface: #080818;
+  --panel:   #0c0c20;
+  --border:  rgba(0,229,255,0.1);
+  --accent:  #00e5ff;
+  --green:   #00ff9f;
+  --red:     #ff4060;
+  --yellow:  #ffce00;
+  --orange:  #ff6b35;
+  --text:    #cce8f0;
+  --muted:   #334455;
+  --font:    'Courier New', 'Lucida Console', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;overflow:hidden}
+
+canvas#starfield{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.4}
+
+.app{position:relative;z-index:1;display:flex;height:100vh}
+
+/* ── SIDEBAR ── */
+aside{
+  width:230px;flex-shrink:0;
+  background:rgba(8,8,24,0.97);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  padding:18px 12px;
+  backdrop-filter:blur(20px);
+  overflow-y:auto;
+}
+aside::-webkit-scrollbar{width:3px}
+aside::-webkit-scrollbar-thumb{background:var(--border)}
+
+.logo{font-size:12px;font-weight:900;letter-spacing:.2em;color:var(--accent);text-transform:uppercase;line-height:1.2}
+.logo span{color:#fff}
+.badge{
+  display:inline-block;font-size:7px;font-weight:700;letter-spacing:.25em;
+  background:linear-gradient(135deg,rgba(0,229,255,.15),rgba(0,229,255,.05));
+  border:1px solid rgba(0,229,255,.3);color:var(--accent);
+  padding:2px 7px;border-radius:4px;margin:6px 0 18px;text-transform:uppercase;
+}
+
+/* NAV */
+.nav-btn{
+  display:flex;align-items:center;gap:9px;padding:9px 11px;
+  border-radius:7px;font-family:var(--font);font-size:10px;font-weight:500;
+  color:var(--muted);cursor:pointer;transition:all .2s;
+  border:1px solid transparent;text-align:left;width:100%;background:transparent;
+  letter-spacing:.06em;text-transform:uppercase;
+}
+.nav-btn:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.nav-btn.active{color:var(--accent);background:rgba(0,229,255,.08);border-color:rgba(0,229,255,.2)}
+.nav-icon{font-size:13px;width:18px;text-align:center}
+
+/* STATS */
+.stat-block{border-top:1px solid var(--border);padding-top:12px;margin-top:12px}
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:9px}
+.stat-label{color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.stat-val{color:var(--text);font-weight:600}
+.stat-val.ok{color:var(--green)}
+.stat-val.warn{color:var(--yellow)}
+.stat-val.off{color:var(--muted)}
+.stat-val.err{color:var(--red)}
+
+/* STATUS PILL */
+.status-pill{
+  display:flex;align-items:center;gap:6px;padding:5px 9px;
+  border-radius:6px;font-size:9px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;margin-top:8px;border:1px solid;
+}
+.status-pill.trained{color:var(--green);border-color:rgba(0,255,159,.25);background:rgba(0,255,159,.06)}
+.status-pill.untrained{color:var(--muted);border-color:rgba(80,100,120,.2);background:rgba(80,100,120,.04)}
+.status-pill.training{color:var(--yellow);border-color:rgba(255,206,0,.25);background:rgba(255,206,0,.06)}
+.pulse{width:5px;height:5px;border-radius:50%;background:currentColor;animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ACTION BTNS */
+.sbtn{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  width:100%;padding:7px;border-radius:6px;font-family:var(--font);
+  font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  cursor:pointer;transition:all .2s;border:1px solid;background:transparent;margin-bottom:5px;
+}
+.sbtn.cyan{color:var(--accent);border-color:rgba(0,229,255,.2)}
+.sbtn.cyan:hover{background:rgba(0,229,255,.08)}
+.sbtn.green{color:var(--green);border-color:rgba(0,255,159,.2)}
+.sbtn.green:hover{background:rgba(0,255,159,.08)}
+.sbtn.red{color:var(--red);border-color:rgba(255,64,96,.2)}
+.sbtn.red:hover{background:rgba(255,64,96,.08)}
+.sbtn:disabled{opacity:.3;cursor:not-allowed}
+
+/* ── MAIN ── */
+main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tab-content{display:none;flex:1;flex-direction:column;overflow:hidden}
+.tab-content.active{display:flex}
+
+/* CHAT */
+#chat{flex:1;overflow-y:auto;padding:22px 26px;scroll-behavior:smooth}
+#chat::-webkit-scrollbar{width:3px}
+#chat::-webkit-scrollbar-thumb{background:var(--border)}
+
+.msg{display:flex;margin-bottom:18px;animation:fadeUp .3s ease-out}
+.msg.user{justify-content:flex-end}
+.msg.ai{justify-content:flex-start}
+.msg.sys{justify-content:flex-start}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+.bubble{
+  max-width:76%;padding:11px 15px;border-radius:11px;
+  font-size:13px;line-height:1.75;font-family:var(--font);
+}
+.bubble.user{
+  background:linear-gradient(135deg,rgba(0,229,255,.15),rgba(0,229,255,.07));
+  border:1px solid rgba(0,229,255,.25);border-top-right-radius:2px;
+}
+.bubble.ai{
+  background:rgba(12,12,32,.9);border:1px solid var(--border);
+  border-top-left-radius:2px;
+}
+.bubble.sys{
+  background:rgba(0,255,159,.04);border:1px solid rgba(0,255,159,.15);
+  color:rgba(0,255,159,.6);font-size:11px;padding:7px 13px;
+}
+
+.typing::after{content:'█';display:inline;color:var(--accent);animation:blink .8s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* INPUT */
+.input-area{
+  padding:14px 22px;border-top:1px solid var(--border);
+  background:rgba(8,8,24,.85);backdrop-filter:blur(10px);
+}
+.input-hint{text-align:center;font-size:9px;color:var(--muted);letter-spacing:.05em;margin-bottom:8px}
+.input-row{
+  display:flex;gap:8px;align-items:stretch;
+  background:rgba(12,12,32,.9);border:1px solid var(--border);
+  border-radius:9px;padding:5px 5px 5px 14px;transition:border-color .2s;
+}
+.input-row:focus-within{border-color:rgba(0,229,255,.4)}
+#msgInput{
+  flex:1;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:var(--font);font-size:13px;padding:7px 0;
+}
+#msgInput::placeholder{color:var(--muted)}
+#sendBtn{
+  background:var(--accent);color:#000;border:none;border-radius:6px;
+  padding:7px 18px;font-family:var(--font);font-size:10px;font-weight:700;
+  letter-spacing:.1em;cursor:pointer;transition:all .2s;
+}
+#sendBtn:hover{background:#33ecff;transform:scale(1.03)}
+#sendBtn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* TRAIN TAB */
+.tab-inner{padding:22px 26px;display:flex;flex-direction:column;flex:1;overflow:hidden}
+.tab-title{
+  font-size:13px;font-weight:700;letter-spacing:.15em;
+  color:var(--accent);text-transform:uppercase;margin-bottom:6px;
+}
+.tab-desc{font-size:10px;color:var(--muted);margin-bottom:16px;line-height:1.6}
+
+textarea.train-area{
+  flex:1;background:rgba(12,12,32,.8);border:1px solid var(--border);
+  border-radius:9px;padding:14px;color:var(--text);font-family:var(--font);
+  font-size:12px;line-height:1.7;resize:none;outline:none;transition:border-color .2s;
+}
+textarea.train-area:focus{border-color:rgba(0,229,255,.3)}
+
+.train-controls{
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  margin-top:12px;padding:12px;
+  background:rgba(12,12,32,.6);border:1px solid var(--border);border-radius:8px;
+}
+.ctrl-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:80px}
+.ctrl-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.ctrl-input{
+  background:rgba(12,12,32,.9);border:1px solid var(--border);
+  color:var(--text);font-family:var(--font);font-size:11px;
+  padding:5px 9px;border-radius:6px;outline:none;width:100%;
+}
+.ctrl-input:focus{border-color:rgba(0,229,255,.4)}
+
+.btn-primary{
+  padding:12px 24px;background:linear-gradient(135deg,rgba(0,229,255,.2),rgba(0,229,255,.08));
+  border:1px solid rgba(0,229,255,.4);color:var(--accent);border-radius:8px;
+  font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;cursor:pointer;transition:all .2s;
+}
+.btn-primary:hover{background:rgba(0,229,255,.18);box-shadow:0 0 18px rgba(0,229,255,.12)}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed}
+
+/* PROGRESS */
+.progress-wrap{margin-top:14px}
+.progress-bar-bg{
+  height:4px;background:rgba(255,255,255,.06);
+  border-radius:4px;overflow:hidden;margin-bottom:8px;
+}
+.progress-bar-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .3s;width:0%}
+.progress-info{display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}
+.loss-val{font-size:9px;color:var(--yellow);font-weight:600}
+
+/* LOSS GRAPH */
+#lossCanvas{
+  width:100%;height:80px;border:1px solid var(--border);
+  border-radius:6px;margin-top:10px;background:rgba(12,12,32,.6);
+}
+
+/* SETTINGS TAB */
+.settings-scroll{flex:1;overflow-y:auto}
+.settings-scroll::-webkit-scrollbar{width:3px}
+.settings-scroll::-webkit-scrollbar-thumb{background:var(--border)}
+.sgroup{
+  background:rgba(12,12,32,.6);border:1px solid var(--border);
+  border-radius:9px;padding:14px;margin-bottom:12px;
+}
+.sgroup-title{
+  font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--border);
+}
+.srow{display:flex;justify-content:space-between;align-items:center;padding:5px 0}
+.slabel{font-size:10px;color:var(--text)}
+.ssub{font-size:9px;color:var(--muted);margin-top:1px}
+.sval{font-size:10px;color:var(--accent);font-weight:600}
+
+input[type="range"]{accent-color:var(--accent);width:110px}
+
+/* NOTIFY */
+#notify{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:rgba(12,12,32,.95);border:1px solid var(--border);
+  color:var(--text);font-size:11px;padding:8px 18px;border-radius:20px;
+  backdrop-filter:blur(10px);pointer-events:none;opacity:0;transition:opacity .3s;z-index:999;
+  white-space:nowrap;
+}
+#notify.show{opacity:1}
+
+/* copyright */
+.copy{margin-top:auto;font-size:7px;color:var(--muted);text-align:center;padding:10px 0;border-top:1px solid var(--border)}
+
+/* ── ОБПАО AUTH OVERLAY ── */
+#obpao-auth{
+  position:fixed;inset:0;background:rgba(4,4,14,.97);
+  display:flex;align-items:center;justify-content:center;
+  z-index:500;padding:20px;
+}
+#obpao-auth.hidden{display:none}
+.auth-box{
+  background:rgba(8,8,24,.98);border:1px solid var(--border);
+  border-radius:16px;padding:28px 24px;width:100%;max-width:340px;text-align:center;
+}
+.auth-logo{font-size:13px;font-weight:900;letter-spacing:.2em;color:var(--accent);text-transform:uppercase}
+.auth-logo span{color:#fff}
+.auth-sub{font-size:8px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin:4px 0 20px}
+.auth-box input{
+  display:block;width:100%;background:rgba(4,4,14,.8);
+  border:1px solid var(--border);color:var(--text);font-family:var(--font);
+  font-size:13px;padding:11px 13px;border-radius:8px;outline:none;
+  margin-bottom:8px;transition:border-color .2s;
+}
+.auth-box input:focus{border-color:rgba(0,229,255,.4)}
+.auth-box input::placeholder{color:var(--muted)}
+.auth-submit{
+  width:100%;padding:11px;
+  background:linear-gradient(135deg,rgba(0,229,255,.2),rgba(0,229,255,.08));
+  border:1px solid rgba(0,229,255,.4);color:var(--accent);
+  font-family:var(--font);font-size:10px;font-weight:700;
+  letter-spacing:.15em;text-transform:uppercase;border-radius:8px;
+  cursor:pointer;transition:all .2s;margin-bottom:6px;
+}
+.auth-submit:hover{background:rgba(0,229,255,.25)}
+.auth-skip{
+  width:100%;padding:8px;background:transparent;
+  border:1px solid rgba(255,255,255,.08);color:var(--muted);
+  font-family:var(--font);font-size:9px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;border-radius:8px;
+  cursor:pointer;transition:all .2s;
+}
+.auth-skip:hover{color:var(--text);border-color:rgba(255,255,255,.15)}
+#auth-msg{font-size:10px;color:var(--red);margin-top:8px;min-height:14px}
+
+/* ── ОБПАО PANEL IN SIDEBAR ── */
+.obpao-block{
+  border-top:1px solid var(--border);padding-top:12px;margin-top:12px;
+}
+.obpao-title{
+  font-size:8px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:8px;
+}
+.obpao-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:9px}
+.obpao-lbl{color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.obpao-val{color:var(--text);font-weight:600}
+.obpao-val.ok{color:var(--green)}
+.obpao-val.off{color:var(--muted)}
+.obpao-val.warn{color:var(--yellow)}
+
+/* ── MOBILE BOTTOM NAV ── */
+#mobile-nav{display:none}
+
+@media(max-width:640px){
+  aside{display:none}
+
+  .app{flex-direction:column}
+
+  main{padding-bottom:56px}
+
+  #mobile-nav{
+    display:flex;
+    position:fixed;bottom:0;left:0;right:0;z-index:100;
+    background:rgba(8,8,24,0.97);
+    border-top:1px solid var(--border);
+    backdrop-filter:blur(20px);
+    height:56px;
+  }
+
+  .mob-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:3px;background:transparent;
+    border:none;cursor:pointer;transition:all .2s;
+    font-family:var(--font);font-size:8px;font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+    padding:6px 0;
+  }
+  .mob-btn .mob-icon{font-size:18px;line-height:1}
+  .mob-btn.active{color:var(--accent)}
+  .mob-btn.active .mob-icon{filter:drop-shadow(0 0 6px rgba(0,229,255,.6))}
+
+  .tab-inner{padding:14px 16px}
+  #chat{padding:14px 16px}
+  .input-area{padding:10px 14px}
+  .bubble{max-width:90%;font-size:13px}
+
+  .train-controls{flex-direction:column;align-items:stretch}
+  .ctrl-group{flex-direction:row;align-items:center;justify-content:space-between}
+  .ctrl-input{width:80px}
+  .btn-primary{width:100%;padding:13px}
+
+  /* notify above bottom nav */
+  #notify{bottom:68px}
+}
+</style>
+</head>
+<body>
+<canvas id="starfield"></canvas>
+
+<!-- ── ОБПАО AUTH ── -->
+<div id="obpao-auth">
+  <div class="auth-box">
+    <div class="auth-logo">ARTEM<span>.AI</span></div>
+    <div class="auth-sub">V6 Neural Core · ОБПАО Cloud</div>
+    <input id="auth-email"    type="email"    placeholder="Email" autocomplete="email">
+    <input id="auth-password" type="password" placeholder="Пароль"
+           onkeydown="if(event.key==='Enter')obpaoLogin()">
+    <button class="auth-submit" onclick="obpaoLogin()">Войти</button>
+    <button class="auth-submit" onclick="obpaoRegister()"
+            style="background:rgba(0,255,159,.1);border-color:rgba(0,255,159,.3);color:var(--green)">
+      Регистрация
+    </button>
+    <button class="auth-skip" onclick="obpaoSkip()">Пропустить — локальный режим</button>
+    <div id="auth-msg"></div>
+  </div>
+</div>
+
+<div class="app">
+
+<!-- ── SIDEBAR ── -->
+<aside>
+  <div class="logo">ARTEM<span>.AI</span></div>
+  <div class="badge">V6 NEURAL CORE</div>
+
+  <!-- NAV -->
+  <button class="nav-btn active" onclick="switchTab('chat')" id="nav-chat">
+    <span class="nav-icon">💬</span> Chat
+  </button>
+  <button class="nav-btn" onclick="switchTab('train')" id="nav-train">
+    <span class="nav-icon">🧠</span> Train
+  </button>
+  <button class="nav-btn" onclick="switchTab('settings')" id="nav-settings">
+    <span class="nav-icon">⚙️</span> Settings
+  </button>
+
+  <!-- MODEL STATUS -->
+  <div class="stat-block">
+    <div id="statusPill" class="status-pill untrained">
+      <div class="pulse"></div>
+      <span id="statusText">Not trained</span>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stat-block">
+    <div class="stat-row">
+      <span class="stat-label">Vocab</span>
+      <span class="stat-val" id="st-vocab">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Params</span>
+      <span class="stat-val" id="st-params">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Epochs</span>
+      <span class="stat-val" id="st-epochs">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Loss</span>
+      <span class="stat-val" id="st-loss">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Seq len</span>
+      <span class="stat-val" id="st-seqlen">40</span>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="stat-block">
+    <button class="sbtn green" id="btnSave" onclick="saveModel()" disabled>💾 Save model</button>
+    <button class="sbtn cyan"  id="btnLoad" onclick="loadModel()">📂 Load model</button>
+    <button class="sbtn red"   id="btnWipe" onclick="wipeModel()">🗑 Wipe</button>
+  </div>
+
+  <!-- ОБПАО -->
+  <div class="obpao-block">
+    <div class="obpao-title">☁ ОБПАО</div>
+    <div class="obpao-row">
+      <span class="obpao-lbl">Статус</span>
+      <span class="obpao-val off" id="op-status">—</span>
+    </div>
+    <div class="obpao-row">
+      <span class="obpao-lbl">Базовая модель</span>
+      <span class="obpao-val off" id="op-model">—</span>
+    </div>
+    <div class="obpao-row" id="op-user-row" style="display:none">
+      <span class="obpao-lbl">Аккаунт</span>
+      <span class="obpao-val ok" id="op-email" style="font-size:8px;max-width:110px;overflow:hidden;text-overflow:ellipsis;"></span>
+    </div>
+    <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;">
+      <button class="sbtn cyan" id="btnDownloadBase" onclick="downloadBaseModel()" disabled>⬇ Скачать базу</button>
+      <button class="sbtn red"  id="btnObpaoLogout" onclick="obpaoLogout()" style="display:none">Выйти</button>
+    </div>
+  </div>
+
+  <div class="copy">© 2025 RKC Studio (Rat, Karas and Crab)</div>
+</aside>
+
+<!-- ── MAIN ── -->
+<main>
+
+  <!-- CHAT -->
+  <div class="tab-content active" id="tab-chat">
+    <div id="chat"></div>
+    <div class="input-area">
+      <div class="input-hint" id="chatHint">Train Artem first — then talk to him</div>
+      <div class="input-row">
+        <input id="msgInput" placeholder="Type something..." autocomplete="off"
+               onkeydown="if(event.key==='Enter')handleSend()">
+        <button id="sendBtn" onclick="handleSend()" disabled>SEND ➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRAIN -->
+  <div class="tab-content" id="tab-train">
+    <div class="tab-inner">
+      <div class="tab-title">🧠 Neural Training</div>
+      <div class="tab-desc">
+        Вставь любой текст. Артём построит нейросеть и обучится на нём — настоящие веса LSTM, не Марков.
+        Чем больше текст и эпох — тем умнее.
+      </div>
+      <textarea class="train-area" id="trainInput"
+        placeholder="Вставь текст для обучения...
+
+Например:
+— Диалоги
+— Лор, описания персонажей
+— Книги, статьи
+— Что угодно на русском или английском
+
+Минимум ~500 символов для первого обучения."></textarea>
+
+      <div class="train-controls">
+        <div class="ctrl-group">
+          <span class="ctrl-label">Epochs</span>
+          <input type="number" class="ctrl-input" id="epochsInput" value="10" min="1" max="200" style="width:70px">
+        </div>
+        <div class="ctrl-group">
+          <span class="ctrl-label">Batch size</span>
+          <input type="number" class="ctrl-input" id="batchInput" value="32" min="8" max="256" style="width:70px">
+        </div>
+        <div class="ctrl-group">
+          <span class="ctrl-label">Seq length</span>
+          <input type="number" class="ctrl-input" id="seqInput" value="40" min="20" max="100" style="width:70px">
+        </div>
+        <button class="btn-primary" id="trainBtn" onclick="startTraining()">⚡ Train</button>
+        <button class="btn-primary" id="stopBtn" onclick="stopTraining()"
+                style="display:none;background:rgba(255,64,96,.15);border-color:rgba(255,64,96,.4);color:var(--red)">
+          ⏹ Stop
+        </button>
+      </div>
+
+      <div class="progress-wrap" id="progressWrap" style="display:none">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+        <div class="progress-info">
+          <span id="progressText">Epoch 0/0</span>
+          <span class="loss-val">Loss: <span id="lossVal">—</span></span>
+        </div>
+        <canvas id="lossCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="tab-content" id="tab-settings">
+    <div class="tab-inner">
+      <div class="tab-title">⚙️ Settings</div>
+      <div class="settings-scroll">
+        <div class="sgroup">
+          <div class="sgroup-title">Generation</div>
+          <div class="srow">
+            <div><div class="slabel">Temperature</div><div class="ssub">Creativity vs coherence</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="range" min="1" max="20" value="8" id="tempSlider"
+                oninput="document.getElementById('tempVal').textContent=(this.value/10).toFixed(1)">
+              <span class="sval" id="tempVal">0.8</span>
+            </div>
+          </div>
+          <div class="srow">
+            <div><div class="slabel">Response length</div><div class="ssub">Characters to generate</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="range" min="50" max="500" value="200" id="lenSlider"
+                oninput="document.getElementById('lenVal').textContent=this.value">
+              <span class="sval" id="lenVal">200</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sgroup">
+          <div class="sgroup-title">Architecture</div>
+          <div class="srow"><span class="slabel">Type</span><span class="sval">LSTM × 2</span></div>
+          <div class="srow"><span class="slabel">Units per layer</span><span class="sval">128</span></div>
+          <div class="srow"><span class="slabel">Dropout</span><span class="sval">0.2</span></div>
+          <div class="srow"><span class="slabel">Optimizer</span><span class="sval">Adam 0.001</span></div>
+          <div class="srow"><span class="slabel">Input</span><span class="sval">One-hot chars</span></div>
+          <div class="srow"><span class="slabel">Output</span><span class="sval">Softmax over vocab</span></div>
+        </div>
+
+        <div class="sgroup">
+          <div class="sgroup-title">About</div>
+          <div class="srow">
+            <div>
+              <div class="slabel">What is this</div>
+              <div class="ssub" style="line-height:1.6;margin-top:4px;max-width:340px">
+                Артём V6 — полноценная нейросеть LSTM, обученная тобой прямо в браузере.
+                Никаких API. Веса хранятся локально. ИИ создан ИИ.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<div id="notify"></div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav id="mobile-nav">
+  <button class="mob-btn active" onclick="switchTab('chat')" id="mob-chat">
+    <span class="mob-icon">💬</span>Chat
+  </button>
+  <button class="mob-btn" onclick="switchTab('train')" id="mob-train">
+    <span class="mob-icon">🧠</span>Train
+  </button>
+  <button class="mob-btn" onclick="switchTab('settings')" id="mob-settings">
+    <span class="mob-icon">⚙️</span>Settings
+  </button>
+</nav>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+let vocab = []
+let charToIdx = {}
+let idxToChar = {}
+let vocabSize = 0
+let model = null
+let SEQ_LEN = 40
+let isTraining = false
+let shouldStop = false
+let trainedEpochs = 0
+let lastLoss = null
+let lossHistory = []
+let isGenerating = false
+
+const STORAGE_VOCAB = 'artem-v6-vocab'
+const STORAGE_META  = 'artem-v6-meta'
+const MODEL_KEY     = 'localstorage://artem-v6-model'
+
+/* ═══════════════════════════════════════════════════
+   VOCAB
+═══════════════════════════════════════════════════ */
+function buildVocab(text) {
+  const chars = [...new Set(text.split(''))].sort()
+  vocab = chars
+  vocabSize = chars.length
+  charToIdx = {}
+  idxToChar = {}
+  chars.forEach((c, i) => { charToIdx[c] = i; idxToChar[i] = c })
+}
+
+/* ═══════════════════════════════════════════════════
+   MODEL
+═══════════════════════════════════════════════════ */
+function buildModel() {
+  if (model) { try { model.dispose() } catch(e){} model = null }
+  model = tf.sequential()
+  model.add(tf.layers.lstm({
+    units: 128, returnSequences: true,
+    inputShape: [SEQ_LEN, vocabSize]
+  }))
+  model.add(tf.layers.dropout({ rate: 0.2 }))
+  model.add(tf.layers.lstm({ units: 128, returnSequences: false }))
+  model.add(tf.layers.dropout({ rate: 0.2 }))
+  model.add(tf.layers.dense({ units: vocabSize, activation: 'softmax' }))
+  model.compile({ optimizer: tf.train.adam(0.001), loss: 'categoricalCrossentropy' })
+  return model
+}
+
+function countParams() {
+  if (!model) return 0
+  return model.trainableWeights.reduce((s, w) => s + w.shape.reduce((a, b) => a * b, 1), 0)
+}
+
+/* ═══════════════════════════════════════════════════
+   TRAINING
+═══════════════════════════════════════════════════ */
+async function startTraining() {
+  const text = document.getElementById('trainInput').value.trim()
+  if (text.length < 100) { notify('⚠ Текст слишком короткий (минимум 100 символов)'); return }
+
+  const epochs    = parseInt(document.getElementById('epochsInput').value) || 10
+  const batchSize = parseInt(document.getElementById('batchInput').value)  || 32
+  SEQ_LEN         = parseInt(document.getElementById('seqInput').value)    || 40
+
+  if (text.length < SEQ_LEN + batchSize) {
+    notify('⚠ Текст слишком короткий для этих настроек'); return
+  }
+
+  isTraining = true
+  shouldStop = false
+  document.getElementById('trainBtn').style.display = 'none'
+  document.getElementById('stopBtn').style.display  = ''
+  document.getElementById('progressWrap').style.display = ''
+  setStatus('training', 'Training...')
+
+  buildVocab(text)
+  buildModel()
+  updateSidebar()
+
+  const textIndices = text.split('').map(c => charToIdx[c] ?? 0)
+  const numSamples = textIndices.length - SEQ_LEN
+  const indices = Array.from({ length: numSamples }, (_, i) => i)
+
+  lossHistory = []
+
+  for (let ep = 0; ep < epochs; ep++) {
+    if (shouldStop) break
+
+    // Fisher-Yates shuffle
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[indices[i], indices[j]] = [indices[j], indices[i]]
+    }
+
+    let epochLoss = 0, batches = 0
+
+    for (let b = 0; b < numSamples; b += batchSize) {
+      if (shouldStop) break
+      const bIdx = indices.slice(b, b + batchSize)
+      const actual = bIdx.length
+      if (actual === 0) break
+
+      // Build one-hot tensors inside tidy to avoid memory leaks
+      const lv = await tf.tidy(() => {
+        const xData = new Float32Array(actual * SEQ_LEN * vocabSize)
+        const yData = new Float32Array(actual * vocabSize)
+        for (let s = 0; s < actual; s++) {
+          const start = bIdx[s]
+          for (let t = 0; t < SEQ_LEN; t++) {
+            xData[s * SEQ_LEN * vocabSize + t * vocabSize + textIndices[start + t]] = 1
+          }
+          yData[s * vocabSize + textIndices[start + SEQ_LEN]] = 1
+        }
+        const xT = tf.tensor3d(xData, [actual, SEQ_LEN, vocabSize])
+        const yT = tf.tensor2d(yData, [actual, vocabSize])
+        return model.trainOnBatch(xT, yT)
+      })
+
+      const loss = await lv
+      const lossVal = Array.isArray(loss) ? loss[0] : (typeof loss === 'number' ? loss : await loss)
+      epochLoss += lossVal; batches++
+
+      // Yield to browser EVERY batch — prevents UI freeze
+      await tf.nextFrame()
+      // Extra breath every 5 batches for mobile
+      if (batches % 5 === 0) await new Promise(r => setTimeout(r, 0))
+
+      // Update progress bar
+      const progress = (ep + b / numSamples) / epochs
+      setProgress(Math.min(progress, 1), epochLoss / batches, ep + 1, epochs)
+    }
+
+    if (batches > 0) {
+      lastLoss = epochLoss / batches
+      lossHistory.push(lastLoss)
+      trainedEpochs++
+      setProgress((ep + 1) / epochs, lastLoss, ep + 1, epochs)
+      drawLossGraph()
+      updateSidebar()
+      // Pause between epochs so mobile can GC and render
+      await new Promise(r => setTimeout(r, 30))
+    }
+  }
+
+  isTraining = false
+  document.getElementById('trainBtn').style.display = ''
+  document.getElementById('stopBtn').style.display = 'none'
+  setStatus('trained', 'Trained')
+  document.getElementById('sendBtn').disabled = false
+  document.getElementById('chatHint').textContent = 'Talking to Artem — neural mode active'
+  updateSidebar()
+  notify('✅ Обучение завершено! Эпох: ' + trainedEpochs + ' | Loss: ' + (lastLoss ? lastLoss.toFixed(4) : '—'))
+}
+
+function stopTraining() {
+  shouldStop = true
+  notify('⏹ Остановка после текущего батча...')
+}
+
+/* ═══════════════════════════════════════════════════
+   GENERATION
+═══════════════════════════════════════════════════ */
+function sampleFromProbs(probs, temperature) {
+  const logits = Array.from(probs).map(p => Math.log(Math.max(p, 1e-10)) / temperature)
+  const maxL = Math.max(...logits)
+  const expL = logits.map(l => Math.exp(l - maxL))
+  const sum  = expL.reduce((a, b) => a + b, 0)
+  const norm = expL.map(e => e / sum)
+  let rand = Math.random(), cum = 0
+  for (let i = 0; i < norm.length; i++) {
+    cum += norm[i]
+    if (rand <= cum) return i
+  }
+  return norm.length - 1
+}
+
+async function generate(seedText, length, temperature) {
+  if (!model || vocabSize === 0) return 'Нейросеть не обучена. Иди в Train.'
+
+  let seedChars = seedText.toLowerCase().slice(-SEQ_LEN).split('')
+  while (seedChars.length < SEQ_LEN) seedChars.unshift(' ')
+
+  let result = ''
+
+  for (let i = 0; i < length; i++) {
+    const xData = new Float32Array(SEQ_LEN * vocabSize)
+    for (let t = 0; t < SEQ_LEN; t++) {
+      const idx = charToIdx[seedChars[t]]
+      if (idx !== undefined) xData[t * vocabSize + idx] = 1
+    }
+    const xT = tf.tensor3d(xData, [1, SEQ_LEN, vocabSize])
+    const pred = model.predict(xT)
+    const probs = await pred.data()
+    xT.dispose(); pred.dispose()
+
+    const sampledIdx = sampleFromProbs(probs, temperature)
+    const nextChar   = idxToChar[sampledIdx] || ''
+    result += nextChar
+    seedChars.push(nextChar)
+    seedChars.shift()
+  }
+
+  return result
+}
+
+/* ═══════════════════════════════════════════════════
+   CHAT
+═══════════════════════════════════════════════════ */
+async function handleSend() {
+  if (isGenerating || isTraining) return
+  const input = document.getElementById('msgInput')
+  const text = input.value.trim()
+  if (!text) return
+
+  input.value = ''
+  addMsg(text, 'user')
+
+  if (!model) { addMsg('Нейросеть не обучена. Открой Train и обучи меня.', 'ai'); return }
+
+  isGenerating = true
+  document.getElementById('sendBtn').disabled = true
+
+  const temperature = parseFloat(document.getElementById('tempSlider').value) / 10
+  const length      = parseInt(document.getElementById('lenSlider').value) || 200
+
+  // Typing bubble
+  const bubble = addMsg('', 'ai', true)
+
+  const response = await generate(text, length, temperature)
+
+  // Animate typing
+  bubble.classList.remove('typing')
+  bubble.textContent = response
+
+  isGenerating = false
+  document.getElementById('sendBtn').disabled = false
+  document.getElementById('chat').scrollTop = 99999
+}
+
+function addMsg(text, type, typing = false) {
+  const chat = document.getElementById('chat')
+  const wrap = document.createElement('div')
+  wrap.className = `msg ${type}`
+  const bub = document.createElement('div')
+  bub.className = `bubble ${type}` + (typing ? ' typing' : '')
+  bub.textContent = text
+  wrap.appendChild(bub)
+  chat.appendChild(wrap)
+  chat.scrollTop = 99999
+  return bub
+}
+
+/* ═══════════════════════════════════════════════════
+   SAVE / LOAD / WIPE
+═══════════════════════════════════════════════════ */
+async function saveModel() {
+  if (!model) { notify('⚠ Нет модели для сохранения'); return }
+  try {
+    await model.save(MODEL_KEY)
+    localStorage.setItem(STORAGE_VOCAB, JSON.stringify(vocab))
+    localStorage.setItem(STORAGE_META, JSON.stringify({
+      seqLen: SEQ_LEN, vocabSize, trainedEpochs, lastLoss, lossHistory
+    }))
+    notify('✅ Модель сохранена в localStorage')
+  } catch(e) {
+    notify('❌ Ошибка сохранения: ' + e.message)
+  }
+}
+
+async function loadModel() {
+  try {
+    const savedVocab = localStorage.getItem(STORAGE_VOCAB)
+    const savedMeta  = localStorage.getItem(STORAGE_META)
+    if (!savedVocab) { notify('⚠ Сохранённая модель не найдена'); return }
+
+    vocab = JSON.parse(savedVocab)
+    vocabSize = vocab.length
+    charToIdx = {}; idxToChar = {}
+    vocab.forEach((c, i) => { charToIdx[c] = i; idxToChar[i] = c })
+
+    if (savedMeta) {
+      const m = JSON.parse(savedMeta)
+      SEQ_LEN = m.seqLen || 40
+      trainedEpochs = m.trainedEpochs || 0
+      lastLoss = m.lastLoss || null
+      lossHistory = m.lossHistory || []
+    }
+
+    if (model) { try { model.dispose() } catch(e){} model = null }
+    model = await tf.loadLayersModel(MODEL_KEY)
+    model.compile({ optimizer: tf.train.adam(0.001), loss: 'categoricalCrossentropy' })
+
+    setStatus('trained', 'Trained')
+    document.getElementById('sendBtn').disabled = false
+    document.getElementById('chatHint').textContent = 'Talking to Artem — neural mode active'
+    updateSidebar()
+    drawLossGraph()
+    notify('✅ Модель загружена. Vocab: ' + vocabSize + ' символов, эпох: ' + trainedEpochs)
+  } catch(e) {
+    notify('❌ Ошибка загрузки: ' + e.message)
+  }
+}
+
+function wipeModel() {
+  if (!confirm('Удалить модель и все веса?')) return
+  try {
+    if (model) { model.dispose(); model = null }
+    localStorage.removeItem(STORAGE_VOCAB)
+    localStorage.removeItem(STORAGE_META)
+    try { tf.io.removeModel(MODEL_KEY) } catch(e){}
+    vocab = []; vocabSize = 0; charToIdx = {}; idxToChar = {}
+    trainedEpochs = 0; lastLoss = null; lossHistory = []
+    SEQ_LEN = 40
+    setStatus('untrained', 'Not trained')
+    document.getElementById('sendBtn').disabled = true
+    document.getElementById('chatHint').textContent = 'Train Artem first — then talk to him'
+    updateSidebar()
+    drawLossGraph()
+    notify('🗑 Модель удалена')
+  } catch(e) {
+    notify('Ошибка: ' + e.message)
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════════ */
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'))
+  document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active'))
+  document.getElementById('tab-' + name).classList.add('active')
+  const sb = document.getElementById('nav-' + name)
+  const mb = document.getElementById('mob-' + name)
+  if (sb) sb.classList.add('active')
+  if (mb) mb.classList.add('active')
+}
+
+function setStatus(type, text) {
+  const pill = document.getElementById('statusPill')
+  pill.className = 'status-pill ' + type
+  document.getElementById('statusText').textContent = text
+}
+
+function setProgress(frac, loss, epoch, total) {
+  document.getElementById('progressFill').style.width = (frac * 100).toFixed(1) + '%'
+  document.getElementById('progressText').textContent = `Epoch ${epoch}/${total}`
+  document.getElementById('lossVal').textContent = loss ? loss.toFixed(4) : '—'
+}
+
+function updateSidebar() {
+  document.getElementById('st-vocab').textContent  = vocabSize || '—'
+  document.getElementById('st-params').textContent = model ? (countParams() / 1000).toFixed(1) + 'K' : '—'
+  document.getElementById('st-epochs').textContent = trainedEpochs
+  document.getElementById('st-loss').textContent   = lastLoss ? lastLoss.toFixed(4) : '—'
+  document.getElementById('st-seqlen').textContent = SEQ_LEN
+  document.getElementById('btnSave').disabled = !model
+}
+
+function drawLossGraph() {
+  const canvas = document.getElementById('lossCanvas')
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+  const W = canvas.offsetWidth, H = canvas.offsetHeight
+  canvas.width = W; canvas.height = H
+  ctx.clearRect(0, 0, W, H)
+
+  if (lossHistory.length < 2) return
+
+  const minL = Math.min(...lossHistory)
+  const maxL = Math.max(...lossHistory)
+  const range = maxL - minL || 1
+
+  ctx.strokeStyle = 'rgba(0,229,255,0.7)'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  lossHistory.forEach((l, i) => {
+    const x = (i / (lossHistory.length - 1)) * W
+    const y = H - ((l - minL) / range) * (H - 10) - 5
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+  })
+  ctx.stroke()
+
+  // Fill under curve
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath()
+  ctx.fillStyle = 'rgba(0,229,255,0.06)'
+  ctx.fill()
+}
+
+function notify(msg) {
+  const el = document.getElementById('notify')
+  el.textContent = msg
+  el.classList.add('show')
+  clearTimeout(notify._t)
+  notify._t = setTimeout(() => el.classList.remove('show'), 3000)
+}
+
+/* ═══════════════════════════════════════════════════
+   ОБПАО — SUPABASE CLOUD
+═══════════════════════════════════════════════════ */
+const DB_URL = 'https://ljljtvywrmkmamhzyqha.supabase.co'
+const DB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqbGp0dnl3cm1rbWFtaHp5cWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNjkyMTEsImV4cCI6MjA4Nzg0NTIxMX0.9wdkamyHzC6yhRIdAcX7RVOaBbZcLxZSgZ4punY8b9o'
+const cloud = window.supabase.createClient(DB_URL, DB_KEY)
+
+let cloudUser = null
+let localMode  = false
+
+function setAuthMsg(msg, color = 'var(--red)') {
+  const el = document.getElementById('auth-msg')
+  el.style.color = color; el.textContent = msg
+}
+
+async function obpaoLogin() {
+  const email = document.getElementById('auth-email').value.trim()
+  const pass  = document.getElementById('auth-password').value.trim()
+  if (!email || !pass) { setAuthMsg('Заполните email и пароль'); return }
+  setAuthMsg('↻ Вход...', 'var(--yellow)')
+  try {
+    const { data, error } = await cloud.auth.signInWithPassword({ email, password: pass })
+    if (error) { setAuthMsg('Ошибка: ' + error.message); return }
+    cloudUser = data.user
+    onCloudConnected()
+  } catch(e) { setAuthMsg('Нет соединения. Проверьте интернет.') }
+}
+
+async function obpaoRegister() {
+  const email = document.getElementById('auth-email').value.trim()
+  const pass  = document.getElementById('auth-password').value.trim()
+  if (!email || !pass) { setAuthMsg('Заполните email и пароль'); return }
+  if (pass.length < 6)  { setAuthMsg('Пароль минимум 6 символов'); return }
+  setAuthMsg('↻ Регистрация...', 'var(--yellow)')
+  try {
+    const { data, error } = await cloud.auth.signUp({ email, password: pass })
+    if (error) { setAuthMsg('Ошибка: ' + error.message); return }
+    if (data.session) {
+      cloudUser = data.session.user
+      onCloudConnected()
+    } else {
+      setAuthMsg('✅ Аккаунт создан! Проверьте почту и войдите.', 'var(--green)')
+    }
+  } catch(e) { setAuthMsg('Нет соединения.') }
+}
+
+function obpaoSkip() {
+  localMode = true
+  document.getElementById('obpao-auth').classList.add('hidden')
+  updateObpaoPanel()
+  notify('⚠ Локальный режим — ОБПАО недоступно')
+}
+
+async function obpaoLogout() {
+  await cloud.auth.signOut()
+  cloudUser = null; localMode = false
+  location.reload()
+}
+
+async function onCloudConnected() {
+  document.getElementById('obpao-auth').classList.add('hidden')
+  updateObpaoPanel()
+  notify('☁️ ОБПАО подключён!')
+  await checkBaseModelAvailable()
+}
+
+async function checkBaseModelAvailable() {
+  try {
+    const { data } = await cloud.from('v6_shared_model')
+      .select('id, meta, created_at')
+      .order('created_at', { ascending: false })
+      .limit(1).single()
+    if (data) {
+      const meta = data.meta || {}
+      document.getElementById('op-model').textContent =
+        `✓ ${meta.trainedEpochs || '?'}ep / L${meta.lastLoss ? meta.lastLoss.toFixed(2) : '?'}`
+      document.getElementById('op-model').className = 'obpao-val ok'
+      document.getElementById('btnDownloadBase').disabled = false
+    } else {
+      document.getElementById('op-model').textContent = 'Нет'
+      document.getElementById('op-model').className = 'obpao-val off'
+    }
+  } catch(e) {
+    document.getElementById('op-model').textContent = 'Ошибка'
+    document.getElementById('op-model').className = 'obpao-val warn'
+  }
+}
+
+function updateObpaoPanel() {
+  if (cloudUser) {
+    document.getElementById('op-status').textContent = 'Online'
+    document.getElementById('op-status').className = 'obpao-val ok'
+    document.getElementById('op-user-row').style.display = 'flex'
+    document.getElementById('op-email').textContent = cloudUser.email
+    document.getElementById('btnObpaoLogout').style.display = ''
+  } else if (localMode) {
+    document.getElementById('op-status').textContent = 'Локально'
+    document.getElementById('op-status').className = 'obpao-val warn'
+  } else {
+    document.getElementById('op-status').textContent = '—'
+    document.getElementById('op-status').className = 'obpao-val off'
+  }
+}
+
+async function downloadBaseModel() {
+  if (!cloudUser) { notify('⚠ Войдите в ОБПАО'); return }
+  notify('⬇ Загрузка базовой модели...')
+  document.getElementById('btnDownloadBase').disabled = true
+  try {
+    const { data, error } = await cloud.from('v6_shared_model')
+      .select('vocab, meta, weights_b64')
+      .order('created_at', { ascending: false })
+      .limit(1).single()
+
+    if (error || !data) throw new Error('Базовая модель не найдена в ОБПАО')
+
+    const meta = data.meta || {}
+    SEQ_LEN    = meta.seqLen || 40
+    vocab      = data.vocab || []
+    vocabSize  = vocab.length
+    charToIdx  = {}; idxToChar = {}
+    vocab.forEach((c, i) => { charToIdx[c] = i; idxToChar[i] = c })
+    trainedEpochs = meta.trainedEpochs || 0
+    lastLoss      = meta.lastLoss || null
+
+    // Reconstruct model from weights
+    if (model) { try { model.dispose() } catch(e){} model = null }
+
+    // Build architecture (same as ОБПАО trained it)
+    model = tf.sequential()
+    model.add(tf.layers.lstm({ units: 128, returnSequences: true, inputShape: [SEQ_LEN, vocabSize] }))
+    model.add(tf.layers.dropout({ rate: 0.2 }))
+    model.add(tf.layers.lstm({ units: 128, returnSequences: false }))
+    model.add(tf.layers.dropout({ rate: 0.2 }))
+    model.add(tf.layers.dense({ units: vocabSize, activation: 'softmax' }))
+    model.compile({ optimizer: tf.train.adam(0.001), loss: 'categoricalCrossentropy' })
+
+    // Load weights from base64
+    const binary  = atob(data.weights_b64)
+    const bytes   = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const weightSpecs = model.getWeights().map(w => ({
+      name: w.name, shape: w.shape, dtype: w.dtype
+    }))
+    const weightsData = tf.io.decodeWeights(bytes.buffer, weightSpecs)
+    const weightValues = weightSpecs.map(s => weightsData[s.name])
+    model.setWeights(weightValues)
+    Object.values(weightsData).forEach(t => t.dispose())
+
+    // Save locally
+    await model.save(MODEL_KEY)
+    localStorage.setItem(STORAGE_VOCAB, JSON.stringify(vocab))
+    localStorage.setItem(STORAGE_META, JSON.stringify({ seqLen: SEQ_LEN, vocabSize, trainedEpochs, lastLoss }))
+
+    setStatus('trained', 'Base loaded')
+    document.getElementById('sendBtn').disabled = false
+    document.getElementById('chatHint').textContent = '☁ Базовая модель с ОБПАО — готов к общению!'
+    updateSidebar()
+    addMsg(`☁ Базовая модель загружена с ОБПАО!\n\nVocab: ${vocabSize} символов | Эпох: ${trainedEpochs} | Loss: ${lastLoss ? lastLoss.toFixed(4) : '—'}\n\nМожно сразу общаться или дообучить меня своими текстами.`, 'sys')
+    notify('✅ Базовая модель загружена!')
+  } catch(e) {
+    notify('❌ ' + e.message)
+    document.getElementById('btnDownloadBase').disabled = false
+  }
+}
+
+/* ── SESSION RESTORE ── */
+window.addEventListener('load', async () => {
+  updateSidebar()
+  addMsg('ARTEM.AI V6 NEURAL CORE инициализирован.\n\nЭто настоящая нейросеть LSTM — не Марков.\nОбучи меня в разделе Train, потом поговорим.\n\nАрхитектура: LSTM(128) → Dropout → LSTM(128) → Dropout → Dense(vocab)', 'sys')
+
+  // Try restore local model
+  try {
+    const saved = localStorage.getItem(STORAGE_VOCAB)
+    if (saved) await loadModel()
+  } catch(e) {}
+
+  // Try restore Supabase session
+  try {
+    const { data: { session } } = await cloud.auth.getSession()
+    if (session) {
+      cloudUser = session.user
+      document.getElementById('obpao-auth').classList.add('hidden')
+      updateObpaoPanel()
+      await checkBaseModelAvailable()
+    } else {
+      // Show auth screen
+      document.getElementById('obpao-auth').classList.remove('hidden')
+    }
+  } catch(e) {
+    // Network unavailable → local mode
+    localMode = true
+    document.getElementById('obpao-auth').classList.add('hidden')
+    updateObpaoPanel()
+    notify('⚠ Нет интернета — локальный режим')
+  }
+})
+
+/* ═══════════════════════════════════════════════════
+   STARFIELD
+═══════════════════════════════════════════════════ */
+;(function() {
+  const canvas = document.getElementById('starfield')
+  const ctx = canvas.getContext('2d')
+  let W, H, stars = []
+
+  function resize() {
+    W = canvas.width  = window.innerWidth
+    H = canvas.height = window.innerHeight
+    stars = Array.from({ length: 100 }, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      r: Math.random() * 1.1 + 0.2,
+      a: Math.random(), da: (Math.random() - 0.5) * 0.005
+    }))
+  }
+  window.addEventListener('resize', resize); resize()
+
+  ;(function draw() {
+    ctx.clearRect(0, 0, W, H)
+    stars.forEach(s => {
+      s.a += s.da
+      if (s.a < 0.05) s.da = Math.abs(s.da)
+      if (s.a > 0.85) s.da = -Math.abs(s.da)
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(140,210,255,${s.a})`
+      ctx.fill()
+    })
+    requestAnimationFrame(draw)
+  })()
+})()
+</script>
+</body>
+</html>
