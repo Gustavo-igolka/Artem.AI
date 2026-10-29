@@ -1,70 +1,102 @@
-# ARTEM.AI V5 TRAVELER
+# ARTEM.AI V7 · Hybrid Core
 
-**Digital companion with hybrid intelligence**  
-Created at RKC studio (Rat, Karas and Crab).
+**Эксперимент «может ли ИИ сделать ИИ».** Артём — собеседник, который живёт прямо в браузере: без серверов, без API-ключей, без установки.
+Создан в RKC Studio (Rat, Karas and Crab).
 
-ARTEM.AI — an experimental AI assistant running directly in your browser. It combines lightweight local neural networks with powerful cloud APIs for a truly hybrid experience.
+Открой сайт — и Артём **сразу отвечает**. Обучать его перед разговором больше не нужно.
 
-![ARTEM.AI V5 TRAVELER](screenshot.png)  
-*— add screenshot link here if available*
+## Как он думает
 
-## Features
+Артём выбирает ответ по цепочке, от самого надёжного к самому творческому:
 
-- **Hybrid Mode**: local generation (trigrams) or API calls (Groq Llama 3.3 / Gemini 2.5 Flash).
-- **On-the-fly Learning**: any messages (except questions) automatically expand the trigram database.
-- **Reasoning Mode**: displays thinking steps before responding — full immersion.
-- **Evolution Log**: records all learning events, imports, and changes.
-- **Import from Artem.S**: backward compatibility with previous versions.
-- **Export/Import Personality**: save and transfer your trained model.
-- **API Key Encryption**: keys are stored encrypted in `localStorage`.
-- **Dark Theme with Starry Sky**: atmospheric cyberpunk-style interface.
+| # | Механизм | Что делает |
+|---|----------|------------|
+| 1 | **Память** (`data/dialogue.txt`) | Ищет в диалогах похожий вопрос (tf-idf + косинусная близость) и отвечает заготовленной репликой |
+| 2 | **LSTM** | Настоящая нейросеть (2 слоя по 128 нейронов), обученная в браузере. Придумывает реплику по буквам. Работает, когда обучена |
+| 3 | **Цепочки слов** | Склеивает фразу из слов по теме твоего сообщения (Марков, порядок 2) |
+| 4 | **Запасная фраза** | Если ничего не подошло |
 
-## How to Use
+Под каждым ответом подписано, чем он получен: `память`, `LSTM` или `слова`.
+Режим можно переключить в **Settings → Режим ответа** (Авто / Память + слова / Только LSTM).
 
-1. **Open `index.html`** in any modern browser (Chrome, Firefox, Edge, Safari).
-2. Start typing in the input field.  
-   - If the message ends with `?` — Artem will answer but won't learn.  
-   - If without `?` — Artem will answer and learn new trigrams.
-3. **API Configuration** (optional):
-   - Go to the **Settings** tab.
-   - Enable **Hybrid Mode (API)**.
-   - Choose a provider (Groq or Gemini).
-   - Paste your API key (it will be encrypted).
-   - Optionally edit the **System Prompt**.
-4. **Manual Training**:
-   - **Training** tab — paste any text (articles, dialogues, books) and click **Train Artem**.
-5. **Import from Artem.S**:
-   - Click **Import Artem.S** on the sidebar if you have saved data from previous versions.
-6. **Save Your Personality**:
-   - **Save Personality** / **Load Personality** buttons let you export and restore all memory and settings.
+## Структура проекта
 
-## Technologies
+```
+index.html            страница (только разметка)
+css/style.css         оформление
+data/dialogue.txt     память Артёма — сюда добавляй диалоги
+js/
+  main.js             запуск, события, обучение, ОБПАО
+  chat.js             выбор ответа: память → LSTM → слова
+  config.js           константы, ключи localStorage, алфавит
+  settings.js         настройки (сохраняются в браузере)
+  ui.js               вкладки, сообщения, график loss
+  cloud.js            ОБПАО (Supabase)
+  starfield.js        звёздный фон
+  brain/
+    dialogue.js       разбор dialogue.txt и поиск похожего вопроса
+    markov.js         цепочки слов
+    lstm.js           нейросеть на TensorFlow.js
+    text.js           нормализация русского текста
+```
 
-- HTML5 / CSS3 (TailwindCSS for rapid styling)
-- Vanilla JavaScript (ES6) without frameworks
-- Storage: `localStorage`
-- APIs: Groq Cloud, Google Gemini
-- Fonts: Orbitron, IBM Plex Mono
+## Как сделать Артёма умнее
 
-## Compatibility
+Самый быстрый способ — **дописывать диалоги в `data/dialogue.txt`**. Формат простой:
 
-Works in all modern browsers with `localStorage` and `fetch` support. API functionality requires an active internet connection.
+```
+Ты: как дела
+Ты: как жизнь
+Артём: Нормально! А у тебя?
+Артём: Отлично, нейроны крутятся.
+```
 
-## Authors & License
+- Несколько строк `Ты:` — разные формулировки одного вопроса.
+- Несколько строк `Артём:` — варианты ответа, выбирается случайный.
+- Пустая строка заканчивает блок.
+- Блок `Ты: *` — запасные фразы на случай, когда ничего не подошло.
+- В ответах можно писать `{time}` и `{date}` — подставятся время и дата.
 
-**Developer:** RKC studio (Rat, Karas and Crab)  
-**Year:** 2026  
-**License:** MIT (see [LICENSE](LICENSE) file)
+Этот же файл служит учебником для LSTM, поэтому чем он больше, тем осмысленнее она говорит.
 
-This project was created to explore hybrid interfaces and local learning approaches.  
-You are free to use, modify, and distribute the code with proper attribution.
+## Обучение LSTM
 
-## Acknowledgments
+Вкладка **Train**:
 
-- Groq for fast Llama inference.
-- Google for Gemini API.
-- The community for inspiration.
+- **Быстрый старт** обучает сеть на диалогах из `dialogue.txt`.
+- Или вставь свой текст (желательно в формате `Ты: … / Артём: …`) и нажми **Train**.
+- Обучение продолжает уже обученную сеть, а не начинает с нуля. Каждая эпоха сохраняется автоматически.
+- Можно остановить кнопкой **Stop**: уже пройденные эпохи не пропадут.
 
----
+⚠ LSTM считается на устройстве. На телефоне или ПК с видеокартой (WebGL) это терпимо, а на слабом устройстве без ускорения очень медленно. Артём предупредит, если бэкенд `cpu`.
 
-*ARTEM.AI V5 TRAVELER — your companion in the digital realm.*
+## Облако ОБПАО
+
+Необязательно. Через **Settings → ☁ ОБПАО** можно войти, загрузить свою обученную LSTM в облако (Supabase) и скачать её на другом устройстве. Формат весов совместим с V6.
+
+## Запуск
+
+Нужен веб-сервер, потому что `data/dialogue.txt` загружается через `fetch`:
+
+- **GitHub Pages** (рекомендуется): Settings → Pages → Branch `main`, папка `/ (root)`.
+- Локально: `python3 -m http.server` в папке проекта и открыть `http://localhost:8000`.
+
+Если открыть `index.html` двойным кликом (`file://`), браузер заблокирует чтение файла памяти, и Артём будет знать только несколько фраз.
+
+## Технологии
+
+HTML / CSS / ванильный JavaScript (ES-модули) · TensorFlow.js · Supabase · localStorage.
+
+## Что нового в V7
+
+- Артём отвечает сразу: появилась память диалогов и цепочки слов.
+- Проект разбит на файлы вместо одного HTML.
+- Если CDN с TensorFlow.js или Supabase недоступен, чат всё равно работает.
+- Вход в ОБПАО больше не блокирует запуск.
+- LSTM можно дообучать, а не только обучать заново; поддерживается остановка, потоковый вывод ответа и фиксированный алфавит.
+- Адаптация под телефон: подсказки-кнопки, нижнее меню, нормальная высота экрана.
+- Старая модель V6 всё ещё загружается из localStorage; её можно использовать как есть или переобучить.
+
+## Лицензия
+
+MIT, см. [LICENSE](LICENSE). Автор: RKC Studio (Rat, Karas and Crab), 2026.
